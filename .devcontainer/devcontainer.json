@@ -1,0 +1,32 @@
+{
+  "name": "E5-ATLASIS",
+
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "workspaceFolder": "/workspaces/e5-atlasis",
+
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.27"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "Vue.volar",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+
+  "remoteUser": "vscode"
+}
