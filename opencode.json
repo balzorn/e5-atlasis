@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Windows",
+      "options": {
+        "baseURL": "http://172.21.176.1:11434/v1"
+      },
+      "models": {
+        "gpt-oss:20b": {
+          "name": "GPT-OSS 20B",
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          }
+        }
+      }
+    }
+  },
+  "model": "ollama/gpt-oss:20b"
+}
