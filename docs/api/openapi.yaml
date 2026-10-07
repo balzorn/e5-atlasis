@@ -1,0 +1,14 @@
+openapi: 3.1.0
+
+info:
+  title: E5-ATLASIS API
+  version: 0.1.0
+  description: Information Security Asset & Infrastructure System
+
+servers:
+  - url: /api/v1
+
+paths: {}
+
+components:
+  schemas: {}
