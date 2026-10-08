@@ -35,12 +35,23 @@ func main() {
 	assetRepository := postgres.NewAssetRepository(db)
 	changeRequestRepository := postgres.NewChangeRequestRepository(db)
 	assetIDGenerator := postgres.NewAssetIDGenerator(db)
+	changeRequestIDGenerator := postgres.NewChangeRequestIDGenerator(db)
 
 	getAsset := applicationasset.NewGetAssetUseCase(assetRepository)
 	createAsset := applicationasset.NewCreateAssetUseCase(assetRepository, assetIDGenerator)
 	getChangeRequest := applicationchange.NewGetChangeRequestUseCase(changeRequestRepository)
+	createChangeRequest := applicationchange.NewCreateChangeRequestUseCase(
+		assetRepository,
+		changeRequestRepository,
+		changeRequestIDGenerator,
+	)
 
-	handler := httpapi.NewHandler(getAsset, getChangeRequest, createAsset)
+	handler := httpapi.NewHandler(
+		getAsset,
+		getChangeRequest,
+		createAsset,
+		createChangeRequest,
+	)
 
 	addr := os.Getenv("HTTP_ADDR")
 	if addr == "" {
