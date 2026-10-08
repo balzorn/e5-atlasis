@@ -6,17 +6,16 @@ import (
 	"testing"
 	"time"
 
+	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
+	applicationchange "github.com/balzorn/e5-atlasis/backend/internal/application/change"
 	domainapproval "github.com/balzorn/e5-atlasis/backend/internal/domain/approval"
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
-	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
-	applicationchange "github.com/balzorn/e5-atlasis/backend/internal/application/change"
 )
 
 const integrationDatabaseURL = "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis?sslmode=disable"
 
 func TestPostgreSQLFullChangeApplication(t *testing.T) {
-	t.Parallel()
 
 	db := newIntegrationDB(t)
 	truncateIntegrationTables(t, db)
@@ -218,7 +217,6 @@ func TestPostgreSQLFullChangeApplication(t *testing.T) {
 }
 
 func TestPostgreSQLChangeApplierRollsBackOnCRStateMismatch(t *testing.T) {
-	t.Parallel()
 
 	db := newIntegrationDB(t)
 	truncateIntegrationTables(t, db)
