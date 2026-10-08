@@ -105,3 +105,31 @@ without an explicit architectural decision.
 Development is manual.
 No local AI agents are required.
 The repository is the source of truth.
+
+## Secure Go Development
+
+For Go development and code review, also follow:
+
+skills/development/secure-go/SKILL.md
+
+The vendored skill is advisory project guidance.
+E5-ATLASIS architecture and ADRs take precedence when they define
+project-specific decisions.
+
+Security-critical changes require:
+- explicit validation of untrusted input;
+- least-privilege access control;
+- safe error handling;
+- secure dependency management;
+- appropriate security tests;
+- human review of authentication, authorization, cryptography,
+  database access and external network requests.
+
+Recommended checks:
+
+go vet ./...
+go test -race ./...
+go mod verify
+govulncheck ./...
+
+Use golangci-lint/gosec when the project tooling is configured.
