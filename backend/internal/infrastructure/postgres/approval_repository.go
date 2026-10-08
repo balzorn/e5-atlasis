@@ -39,7 +39,7 @@ func (r *ApprovalRepository) Create(
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`,
-		a.ID.String(),
+		string(a.ID),
 		a.ChangeRequestID,
 		a.Type,
 		a.Status,
@@ -76,7 +76,7 @@ func (r *ApprovalRepository) GetByID(
 		FROM approvals
 		WHERE id = $1
 		`,
-		id.String(),
+		string(id),
 	).Scan(
 		&a.ID,
 		&a.ChangeRequestID,
@@ -166,7 +166,7 @@ func (r *ApprovalRepository) Save(
 			comment = $4
 		WHERE id = $1
 		`,
-		a.ID.String(),
+		string(a.ID),
 		a.Status,
 		a.DecidedAt,
 		a.Comment,
