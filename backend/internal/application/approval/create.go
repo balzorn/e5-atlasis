@@ -25,7 +25,7 @@ type CreateApprovalCommand struct {
 type CreateApprovalUseCase struct {
 	changeRequests ports.ChangeRequestRepository
 	approvals      ports.ApprovalRepository
-	ids             ports.ApprovalIDGenerator
+	ids            ports.ApprovalIDGenerator
 }
 
 func NewCreateApprovalUseCase(
@@ -36,7 +36,7 @@ func NewCreateApprovalUseCase(
 	return &CreateApprovalUseCase{
 		changeRequests: changeRequests,
 		approvals:      approvals,
-		ids:             ids,
+		ids:            ids,
 	}
 }
 

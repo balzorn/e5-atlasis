@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
 	applicationasset "github.com/balzorn/e5-atlasis/backend/internal/application/asset"
 	applicationchange "github.com/balzorn/e5-atlasis/backend/internal/application/change"
-	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
 	domainapproval "github.com/balzorn/e5-atlasis/backend/internal/domain/approval"
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
@@ -324,50 +324,98 @@ func writeChangeRequestResult(w http.ResponseWriter, cr *domainchange.ChangeRequ
 }
 
 func (h *Handler) submitChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	id, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	cr, err := h.submitChange.Execute(r.Context(), id)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeChangeRequestResult(w, cr)
 }
 
 func (h *Handler) startChangeRequestReviewHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	id, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	cr, err := h.startReview.Execute(r.Context(), id)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeChangeRequestResult(w, cr)
 }
 
 func (h *Handler) requestChangesHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	id, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	cr, err := h.requestChanges.Execute(r.Context(), id)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeChangeRequestResult(w, cr)
 }
 
 func (h *Handler) rejectChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	id, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	cr, err := h.rejectChange.Execute(r.Context(), id)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeChangeRequestResult(w, cr)
 }
 
 func (h *Handler) approveChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	id, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	cr, err := h.approveChange.Execute(r.Context(), id)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeChangeRequestResult(w, cr)
 }
 
 func (h *Handler) applyChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	id, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	asset, err := h.applyChange.Execute(r.Context(), id)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, assetResponse(*asset))
 }
 
@@ -378,8 +426,13 @@ type createApprovalRequest struct {
 }
 
 func (h *Handler) createApprovalHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	crID, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	crID, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	var req createApprovalRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		if errors.Is(err, errUnsupportedMediaType) {
@@ -392,18 +445,31 @@ func (h *Handler) createApprovalHandler(w http.ResponseWriter, r *http.Request) 
 	a, err := h.createApproval.Execute(r.Context(), applicationapproval.CreateApprovalCommand{
 		ChangeRequestID: crID, Type: req.Type, Required: req.Required, ApproverID: req.ApproverID,
 	})
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	w.Header().Set("Location", "/api/v1/approvals/"+a.ID.String())
 	writeJSON(w, http.StatusCreated, approvalResponse(*a))
 }
 
 func (h *Handler) listApprovalsHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireActorID(w, r); !ok { return }
-	crID, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	if _, ok := requireActorID(w, r); !ok {
+		return
+	}
+	crID, ok := parseChangeRequestPathID(w, r)
+	if !ok {
+		return
+	}
 	approvals, err := h.listApprovals.Execute(r.Context(), crID)
-	if err != nil { writeApplicationError(w, err); return }
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	response := make([]map[string]any, 0, len(approvals))
-	for _, a := range approvals { response = append(response, approvalResponse(a)) }
+	for _, a := range approvals {
+		response = append(response, approvalResponse(a))
+	}
 	writeJSON(w, http.StatusOK, response)
 }
 
@@ -412,8 +478,14 @@ type approvalDecisionRequest struct {
 }
 
 func (h *Handler) decideApproval(w http.ResponseWriter, r *http.Request, approve bool) {
-	actorID, ok := requireActorID(w, r); if !ok { return }
-	approvalID, ok := parseApprovalPathID(w, r); if !ok { return }
+	actorID, ok := requireActorID(w, r)
+	if !ok {
+		return
+	}
+	approvalID, ok := parseApprovalPathID(w, r)
+	if !ok {
+		return
+	}
 	var req approvalDecisionRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		if errors.Is(err, errUnsupportedMediaType) {
@@ -426,13 +498,24 @@ func (h *Handler) decideApproval(w http.ResponseWriter, r *http.Request, approve
 	cmd := applicationapproval.DecisionCommand{ApprovalID: approvalID, DecidedBy: actorID, Comment: strings.TrimSpace(req.Comment)}
 	var a *domainapproval.Approval
 	var err error
-	if approve { a, err = h.approveApproval.Execute(r.Context(), cmd) } else { a, err = h.rejectApproval.Execute(r.Context(), cmd) }
-	if err != nil { writeApplicationError(w, err); return }
+	if approve {
+		a, err = h.approveApproval.Execute(r.Context(), cmd)
+	} else {
+		a, err = h.rejectApproval.Execute(r.Context(), cmd)
+	}
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, approvalResponse(*a))
 }
 
-func (h *Handler) approveApprovalHandler(w http.ResponseWriter, r *http.Request) { h.decideApproval(w, r, true) }
-func (h *Handler) rejectApprovalHandler(w http.ResponseWriter, r *http.Request) { h.decideApproval(w, r, false) }
+func (h *Handler) approveApprovalHandler(w http.ResponseWriter, r *http.Request) {
+	h.decideApproval(w, r, true)
+}
+func (h *Handler) rejectApprovalHandler(w http.ResponseWriter, r *http.Request) {
+	h.decideApproval(w, r, false)
+}
 func (h *Handler) getAssetByID(w http.ResponseWriter, r *http.Request) {
 	value := strings.TrimSpace(r.PathValue("assetID"))
 	assetID, err := domainasset.ParseAssetID(value)

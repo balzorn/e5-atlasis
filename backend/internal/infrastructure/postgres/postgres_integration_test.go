@@ -12,7 +12,6 @@ import (
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 )
 
-
 func TestPostgreSQLFullChangeApplication(t *testing.T) {
 
 	db := newIntegrationDB(t)
@@ -191,7 +190,7 @@ func TestPostgreSQLFullChangeApplication(t *testing.T) {
 	}
 
 	var (
-		version2Owner string
+		version2Owner   string
 		changeRequestID *string
 	)
 
@@ -239,7 +238,7 @@ func TestPostgreSQLChangeApplierRollsBackOnCRStateMismatch(t *testing.T) {
 		Criticality:    domainasset.CriticalityLow,
 		RiskLevel:      domainasset.RiskLevelLow,
 		Security: domainasset.SecurityProfile{
-			ProtectionRequired:  false,
+			ProtectionRequired: false,
 			ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
 			AttestationStatus:  domainasset.AttestationStatusNotRequired,
 		},
@@ -345,27 +344,27 @@ func TestPostgreSQLConcurrentChangeApplication(t *testing.T) {
 
 	now := time.Now().UTC()
 	current := domainasset.InformationAsset{
-		ID: assetID,
-		Type: domainasset.AssetTypeInformationSystem,
-		Name: "Concurrent Test System",
-		Status: domainasset.AssetStatusDraft,
+		ID:             assetID,
+		Type:           domainasset.AssetTypeInformationSystem,
+		Name:           "Concurrent Test System",
+		Status:         domainasset.AssetStatusDraft,
 		OrganizationID: "ORG001",
-		OwnerID: "USR001",
-		Criticality: domainasset.CriticalityMedium,
-		RiskLevel: domainasset.RiskLevelMedium,
+		OwnerID:        "USR001",
+		Criticality:    domainasset.CriticalityMedium,
+		RiskLevel:      domainasset.RiskLevelMedium,
 		Security: domainasset.SecurityProfile{
 			ProtectionRequired: false,
-			ProtectionStatus: domainasset.ProtectionStatusNotRequired,
-			AttestationStatus: domainasset.AttestationStatusNotRequired,
+			ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
+			AttestationStatus:  domainasset.AttestationStatusNotRequired,
 		},
 		CurrentVersion: 1,
 	}
 
 	version1 := domainasset.AssetVersion{
-		ID: "IA00003-v00001",
-		AssetID: assetID,
-		Version: 1,
-		State: current,
+		ID:        "IA00003-v00001",
+		AssetID:   assetID,
+		Version:   1,
+		State:     current,
 		CreatedBy: "USR001",
 		CreatedAt: now,
 	}
@@ -376,17 +375,17 @@ func TestPostgreSQLConcurrentChangeApplication(t *testing.T) {
 
 	makeCR := func(id string, owner string) domainchange.ChangeRequest {
 		return domainchange.ChangeRequest{
-			ID: domainchange.ID(id),
-			AssetID: assetID.String(),
+			ID:          domainchange.ID(id),
+			AssetID:     assetID.String(),
 			BaseVersion: 1,
-			Status: domainchange.StatusApproved,
-			Initiator: "USR001",
-			Title: "Concurrent owner change",
+			Status:      domainchange.StatusApproved,
+			Initiator:   "USR001",
+			Title:       "Concurrent owner change",
 			Description: "Concurrency integration test",
 			Changes: []domainchange.FieldChange{
 				{
-					ID: "CHG00001",
-					Field: domainasset.FieldOwnerID,
+					ID:       "CHG00001",
+					Field:    domainasset.FieldOwnerID,
 					OldValue: domainasset.NewStringFieldValue("USR001"),
 					NewValue: domainasset.NewStringFieldValue(owner),
 				},
@@ -415,12 +414,12 @@ func TestPostgreSQLConcurrentChangeApplication(t *testing.T) {
 		next.CurrentVersion = 2
 
 		return domainasset.AssetVersion{
-			ID: "IA00003-v00002",
-			AssetID: assetID,
-			Version: 2,
-			State: next,
-			CreatedBy: cr.Initiator,
-			CreatedAt: time.Now().UTC(),
+			ID:              "IA00003-v00002",
+			AssetID:         assetID,
+			Version:         2,
+			State:           next,
+			CreatedBy:       cr.Initiator,
+			CreatedAt:       time.Now().UTC(),
 			ChangeRequestID: integrationStringPointer(cr.ID.String()),
 		}
 	}
@@ -430,7 +429,7 @@ func TestPostgreSQLConcurrentChangeApplication(t *testing.T) {
 
 	type result struct {
 		crID domainchange.ID
-		err error
+		err  error
 	}
 	results := make(chan result, 2)
 

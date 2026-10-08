@@ -34,7 +34,7 @@ func TestPostgreSQLRejectsDuplicateFieldChanges(t *testing.T) {
 		Security: domainasset.SecurityProfile{
 			ProtectionRequired: false,
 			ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
-			AttestationStatus: domainasset.AttestationStatusNotRequired,
+			AttestationStatus:  domainasset.AttestationStatusNotRequired,
 		},
 		CurrentVersion: 1,
 	}
