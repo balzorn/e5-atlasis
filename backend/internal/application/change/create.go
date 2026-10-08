@@ -3,11 +3,19 @@ package change
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
+)
+
+const (
+	maxChangeRequestInitiatorLength = 128
+	maxChangeRequestTitleLength     = 500
+	maxChangeRequestDescription     = 4000
 )
 
 type CreateChangeRequestCommand struct {
@@ -51,17 +59,38 @@ func (uc *CreateChangeRequestUseCase) Execute(
 		return nil, err
 	}
 
+	if cmd.BaseVersion < 1 {
+		return nil, fmt.Errorf("%w: base version must be greater than zero", ports.ErrInvalidInput)
+	}
+
 	if current.CurrentVersion.Int() != cmd.BaseVersion {
 		return nil, fmt.Errorf(
-			"base version %d does not match current asset version %d",
+			"%w: base version %d does not match current asset version %d",
+			ports.ErrConflict,
 			cmd.BaseVersion,
 			current.CurrentVersion.Int(),
 		)
 	}
 
-	id, err := uc.ids.Next(ctx)
-	if err != nil {
-		return nil, err
+	initiator := strings.TrimSpace(cmd.Initiator)
+	if initiator == "" {
+		return nil, fmt.Errorf("%w: initiator is required", ports.ErrInvalidInput)
+	}
+	if utf8.RuneCountInString(initiator) > maxChangeRequestInitiatorLength {
+		return nil, fmt.Errorf("%w: initiator is too long", ports.ErrInvalidInput)
+	}
+
+	title := strings.TrimSpace(cmd.Title)
+	if title == "" {
+		return nil, fmt.Errorf("%w: title is required", ports.ErrInvalidInput)
+	}
+	if utf8.RuneCountInString(title) > maxChangeRequestTitleLength {
+		return nil, fmt.Errorf("%w: title is too long", ports.ErrInvalidInput)
+	}
+
+	description := strings.TrimSpace(cmd.Description)
+	if utf8.RuneCountInString(description) > maxChangeRequestDescription {
+		return nil, fmt.Errorf("%w: description is too long", ports.ErrInvalidInput)
 	}
 
 	changes := make([]domainchange.FieldChange, 0, len(cmd.Changes))
@@ -69,23 +98,26 @@ func (uc *CreateChangeRequestUseCase) Execute(
 
 	for i, proposal := range cmd.Changes {
 		field := proposal.Field
+		if field == "" {
+			return nil, fmt.Errorf("%w: field is required", ports.ErrInvalidInput)
+		}
 
 		if _, exists := seenFields[string(field)]; exists {
-			return nil, fmt.Errorf("field %q appears more than once", field)
+			return nil, fmt.Errorf("%w: field %q appears more than once", ports.ErrInvalidInput, field)
 		}
 		seenFields[string(field)] = struct{}{}
 
 		if err := proposal.NewValue.ValidateFor(field); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %v", ports.ErrInvalidInput, err)
 		}
 
 		oldValue, err := current.FieldValue(field)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %v", ports.ErrInvalidInput, err)
 		}
 
 		if oldValue.Equal(proposal.NewValue) {
-			return nil, fmt.Errorf("field %q has no actual change", field)
+			return nil, fmt.Errorf("%w: field %q has no actual change", ports.ErrInvalidInput, field)
 		}
 
 		changes = append(changes, domainchange.FieldChange{
@@ -96,6 +128,15 @@ func (uc *CreateChangeRequestUseCase) Execute(
 		})
 	}
 
+	if len(changes) == 0 {
+		return nil, fmt.Errorf("%w: at least one change is required", ports.ErrInvalidInput)
+	}
+
+	id, err := uc.ids.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now().UTC()
 
 	cr := domainchange.ChangeRequest{
@@ -103,16 +144,16 @@ func (uc *CreateChangeRequestUseCase) Execute(
 		AssetID:     cmd.AssetID.String(),
 		BaseVersion: cmd.BaseVersion,
 		Status:      domainchange.StatusDraft,
-		Initiator:   cmd.Initiator,
-		Title:       cmd.Title,
-		Description: cmd.Description,
+		Initiator:   initiator,
+		Title:       title,
+		Description: description,
 		Changes:     changes,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 
 	if err := cr.Validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ports.ErrInvalidInput, err)
 	}
 
 	if err := uc.changeRequests.Create(ctx, cr); err != nil {
