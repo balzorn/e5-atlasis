@@ -39,6 +39,34 @@ tasks:
       - |
         set -eu
 
+        if ! command -v docker >/dev/null 2>&1; then
+          echo "Docker is not installed or not available in PATH."
+          exit 1
+        fi
+
+        if ! docker compose version >/dev/null 2>&1; then
+          echo "Docker Compose is not available."
+          exit 1
+        fi
+
+        if ! postgres_container="$(docker compose ps -q {{.POSTGRES_SERVICE}} 2>/dev/null)"; then
+          echo "Cannot inspect PostgreSQL service '{{.POSTGRES_SERVICE}}'."
+          echo "Check the Compose configuration and run 'task db:status'."
+          exit 1
+        fi
+
+        if [ -z "$postgres_container" ]; then
+          echo "PostgreSQL container is not running."
+          echo "Run 'task db:up' and retry."
+          exit 1
+        fi
+
+        if ! docker compose exec -T {{.POSTGRES_SERVICE}} pg_isready -U {{.DEV_DB_USER}} -d {{.DEV_DB_NAME}} >/dev/null 2>&1; then
+          echo "PostgreSQL container is running, but database '{{.DEV_DB_NAME}}' is not ready."
+          echo "Run 'task db:status' and inspect the PostgreSQL container logs."
+          exit 1
+        fi
+
         psql_cmd="docker compose exec -T {{.POSTGRES_SERVICE}} psql -U {{.DEV_DB_USER}} -d {{.DEV_DB_NAME}}"
 
         schema_exists="$($psql_cmd -Atqc "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'information_assets')")"
