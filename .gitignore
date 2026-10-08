@@ -31,3 +31,6 @@ temp/
 
 # Local AI/runtime
 .ollama/
+
+# pnpm cache
+.pnpm-store/

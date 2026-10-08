@@ -3,6 +3,7 @@ package change
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
@@ -83,7 +84,7 @@ func (uc *CreateChangeRequestUseCase) Execute(
 			return nil, err
 		}
 
-		if oldValue == proposal.NewValue {
+		if reflect.DeepEqual(oldValue, proposal.NewValue) {
 			return nil, fmt.Errorf("field %q has no actual change", proposal.Field)
 		}
 
