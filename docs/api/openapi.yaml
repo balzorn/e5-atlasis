@@ -265,6 +265,89 @@ components:
         security:
           $ref: '#/components/schemas/SecurityProfile'
 
+    SecurityProfile:
+      type: object
+      required:
+        - protectionRequired
+        - protectionStatus
+        - attestationStatus
+        - cyberCenterRequired
+      properties:
+        protectionRequired:
+          type: boolean
+        protectionStatus:
+          type: string
+          enum:
+            - NOT_REQUIRED
+            - REQUIRED
+            - IN_PROGRESS
+            - IMPLEMENTED
+        attestationStatus:
+          type: string
+          enum:
+            - NOT_REQUIRED
+            - REQUIRED
+            - IN_PROGRESS
+            - ATTESTED
+            - EXPIRED
+        cyberCenterRequired:
+          type: boolean
+
+    CreateChangeRequestRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - assetId
+        - baseVersion
+        - title
+        - changes
+      properties:
+        assetId:
+          type: string
+          pattern: '^IA[0-9]{5}$'
+        baseVersion:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 4000
+        changes:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ChangeProposal'
+
+    ChangeProposal:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - newValue
+      properties:
+        field:
+          type: string
+          enum:
+            - type
+            - name
+            - short_name
+            - status
+            - organization_id
+            - owner_id
+            - purpose
+            - criticality
+            - risk_level
+            - protection_required
+            - protection_status
+            - attestation_status
+            - cyber_center_required
+        newValue:
+          $ref: '#/components/schemas/FieldValue'
+
     InformationAsset:
       type: object
       required:
@@ -326,175 +409,6 @@ components:
           type: integer
           minimum: 1
 
-    SecurityProfile:
-      type: object
-      required:
-        - protectionRequired
-        - protectionStatus
-        - attestationStatus
-        - cyberCenterRequired
-      properties:
-        protectionRequired:
-          type: boolean
-        protectionStatus:
-          type: string
-          enum:
-            - NOT_REQUIRED
-            - REQUIRED
-            - IN_PROGRESS
-            - IMPLEMENTED
-        attestationStatus:
-          type: string
-          enum:
-            - NOT_REQUIRED
-            - REQUIRED
-            - IN_PROGRESS
-            - ATTESTED
-            - EXPIRED
-        cyberCenterRequired:
-          type: boolean
-
-    CreateChangeRequestRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - assetId
-        - baseVersion
-        - title
-        - changes
-      properties:
-        assetId:
-          type: string
-          pattern: '^IA[0-9]{5}      required:
-        - id
-        - assetId
-        - baseVersion
-        - status
-        - initiator
-        - title
-        - description
-        - changes
-        - createdAt
-        - updatedAt
-      properties:
-        id:
-          type: string
-        assetId:
-          type: string
-          pattern: '^IA[0-9]{5}$'
-        baseVersion:
-          type: integer
-          minimum: 1
-        status:
-          type: string
-          enum:
-            - DRAFT
-            - SUBMITTED
-            - UNDER_REVIEW
-            - CHANGES_REQUESTED
-            - APPROVED
-            - APPLYING
-            - APPLIED
-            - REJECTED
-            - CANCELLED
-        initiator:
-          type: string
-        title:
-          type: string
-        description:
-          type: string
-        changes:
-          type: array
-          items:
-            $ref: '#/components/schemas/FieldChange'
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
-    FieldChange:
-      type: object
-      required:
-        - id
-        - field
-        - oldValue
-        - newValue
-      properties:
-        id:
-          type: string
-        field:
-          type: string
-        oldValue:
-          $ref: '#/components/schemas/FieldValue'
-        newValue:
-          $ref: '#/components/schemas/FieldValue'
-
-    FieldValue:
-      oneOf:
-        - type: object
-          required:
-            - kind
-            - value
-          properties:
-            kind:
-              const: string
-            value:
-              type: string
-        - type: object
-          required:
-            - kind
-            - value
-          properties:
-            kind:
-              const: boolean
-            value:
-              type: boolean
-
-        baseVersion:
-          type: integer
-          minimum: 1
-        title:
-          type: string
-          minLength: 1
-          maxLength: 500
-        description:
-          type: string
-          maxLength: 4000
-        changes:
-          type: array
-          minItems: 1
-          maxItems: 100
-          items:
-            $ref: '#/components/schemas/ChangeProposal'
-
-    ChangeProposal:
-      type: object
-      additionalProperties: false
-      required:
-        - field
-        - newValue
-      properties:
-        field:
-          type: string
-          enum:
-            - type
-            - name
-            - short_name
-            - status
-            - organization_id
-            - owner_id
-            - purpose
-            - criticality
-            - risk_level
-            - protection_required
-            - protection_status
-            - attestation_status
-            - cyber_center_required
-        newValue:
-          $ref: '#/components/schemas/FieldValue'
-
     ChangeRequest:
       type: object
       required:
@@ -511,6 +425,7 @@ components:
       properties:
         id:
           type: string
+          pattern: '^CR[0-9]{5}$'
         assetId:
           type: string
           pattern: '^IA[0-9]{5}$'
@@ -566,6 +481,7 @@ components:
     FieldValue:
       oneOf:
         - type: object
+          additionalProperties: false
           required:
             - kind
             - value
@@ -575,6 +491,7 @@ components:
             value:
               type: string
         - type: object
+          additionalProperties: false
           required:
             - kind
             - value
