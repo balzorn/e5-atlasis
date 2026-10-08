@@ -34,11 +34,13 @@ func main() {
 
 	assetRepository := postgres.NewAssetRepository(db)
 	changeRequestRepository := postgres.NewChangeRequestRepository(db)
+	assetIDGenerator := postgres.NewAssetIDGenerator(db)
 
 	getAsset := applicationasset.NewGetAssetUseCase(assetRepository)
+	createAsset := applicationasset.NewCreateAssetUseCase(assetRepository, assetIDGenerator)
 	getChangeRequest := applicationchange.NewGetChangeRequestUseCase(changeRequestRepository)
 
-	handler := httpapi.NewHandler(getAsset, getChangeRequest)
+	handler := httpapi.NewHandler(getAsset, getChangeRequest, createAsset)
 
 	addr := os.Getenv("HTTP_ADDR")
 	if addr == "" {
