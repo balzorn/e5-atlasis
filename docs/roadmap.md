@@ -13,7 +13,7 @@
 - [x] Review workflow
 - [ ] Request changes
 - [ ] Reject Change Request
-- [ ] Approvals
+- [x] Approvals
 - [ ] Apply Change Request
 - [ ] Immutable AssetVersion persistence
 
@@ -36,7 +36,7 @@
 - [ ] Asset history
 - [ ] Change Request UI
 - [ ] Discussions
-- [ ] Approvals
+- [x] Approvals
 - [ ] Administration
 
 ## Infrastructure

@@ -38,6 +38,8 @@ The server derives old values from the asset version.
 3. APPLYING and APPLIED are system-controlled states.
 4. Every applied CR creates a new immutable AssetVersion.
 5. Direct modification of controlled asset fields is forbidden.
+6. A Change Request cannot become APPROVED while any required Approval is not APPROVED.
+7. A Change Request must have at least one Approval before it can become APPROVED.
 
 ## Lifecycle
 

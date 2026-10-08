@@ -9,6 +9,10 @@ type ID string
 
 type Status string
 
+func (id ID) String() string {
+	return string(id)
+}
+
 const (
 	StatusDraft            Status = "DRAFT"
 	StatusSubmitted        Status = "SUBMITTED"
