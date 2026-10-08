@@ -95,6 +95,30 @@ func TestApplyFieldRejectsInvalidStatusTransition(t *testing.T) {
 	}
 }
 
+func TestApplyFieldRejectsEmptyName(t *testing.T) {
+	a := newTestAsset()
+
+	err := a.ApplyField(
+		FieldNameField,
+		NewStringFieldValue(""),
+	)
+	if err == nil {
+		t.Fatal("ApplyField() error = nil, want required-field error")
+	}
+}
+
+func TestApplyFieldRejectsEmptyOwner(t *testing.T) {
+	a := newTestAsset()
+
+	err := a.ApplyField(
+		FieldOwnerID,
+		NewStringFieldValue(""),
+	)
+	if err == nil {
+		t.Fatal("ApplyField() error = nil, want required-field error")
+	}
+}
+
 func TestApplyFieldRejectsWrongValueKind(t *testing.T) {
 	a := newTestAsset()
 
