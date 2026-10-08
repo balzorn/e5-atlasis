@@ -80,6 +80,41 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /change-requests:
+    post:
+      operationId: createChangeRequest
+      summary: Create a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChangeRequestRequest'
+      responses:
+        '201':
+          description: Change Request created
+          headers:
+            Location:
+              description: URL of the created Change Request
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /change-requests/{changeRequestId}:
     get:
       operationId: getChangeRequest
@@ -140,6 +175,13 @@ components:
 
     UnsupportedMediaType:
       description: Unsupported request media type
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: Resource version conflict
       content:
         application/json:
           schema:
@@ -311,6 +353,147 @@ components:
             - EXPIRED
         cyberCenterRequired:
           type: boolean
+
+    CreateChangeRequestRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - assetId
+        - baseVersion
+        - title
+        - changes
+      properties:
+        assetId:
+          type: string
+          pattern: '^IA[0-9]{5}      required:
+        - id
+        - assetId
+        - baseVersion
+        - status
+        - initiator
+        - title
+        - description
+        - changes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        assetId:
+          type: string
+          pattern: '^IA[0-9]{5}$'
+        baseVersion:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - SUBMITTED
+            - UNDER_REVIEW
+            - CHANGES_REQUESTED
+            - APPROVED
+            - APPLYING
+            - APPLIED
+            - REJECTED
+            - CANCELLED
+        initiator:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldChange'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FieldChange:
+      type: object
+      required:
+        - id
+        - field
+        - oldValue
+        - newValue
+      properties:
+        id:
+          type: string
+        field:
+          type: string
+        oldValue:
+          $ref: '#/components/schemas/FieldValue'
+        newValue:
+          $ref: '#/components/schemas/FieldValue'
+
+    FieldValue:
+      oneOf:
+        - type: object
+          required:
+            - kind
+            - value
+          properties:
+            kind:
+              const: string
+            value:
+              type: string
+        - type: object
+          required:
+            - kind
+            - value
+          properties:
+            kind:
+              const: boolean
+            value:
+              type: boolean
+
+        baseVersion:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          maxLength: 4000
+        changes:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ChangeProposal'
+
+    ChangeProposal:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - newValue
+      properties:
+        field:
+          type: string
+          enum:
+            - type
+            - name
+            - short_name
+            - status
+            - organization_id
+            - owner_id
+            - purpose
+            - criticality
+            - risk_level
+            - protection_required
+            - protection_status
+            - attestation_status
+            - cyber_center_required
+        newValue:
+          $ref: '#/components/schemas/FieldValue'
 
     ChangeRequest:
       type: object
