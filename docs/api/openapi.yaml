@@ -9,6 +9,57 @@ servers:
   - url: /api/v1
 
 paths:
+  /healthz:
+    servers:
+      - url: /
+    get:
+      operationId: healthz
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    const: ok
+
+  /assets:
+    post:
+      operationId: createInformationAsset
+      summary: Create an Information Asset
+      parameters:
+        - $ref: '#/components/parameters/ActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInformationAssetRequest'
+      responses:
+        '201':
+          description: Information Asset created
+          headers:
+            Location:
+              description: URL of the created Information Asset
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformationAsset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /assets/{assetId}:
     get:
       operationId: getInformationAsset
@@ -51,6 +102,16 @@ paths:
 
 components:
   parameters:
+    ActorId:
+      name: X-Actor-ID
+      in: header
+      required: true
+      description: Caller identity supplied by the trusted caller until OIDC middleware is introduced.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+
     AssetId:
       name: assetId
       in: path
@@ -72,6 +133,13 @@ components:
   responses:
     BadRequest:
       description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UnsupportedMediaType:
+      description: Unsupported request media type
       content:
         application/json:
           schema:
@@ -102,6 +170,58 @@ components:
           type: string
         message:
           type: string
+
+    CreateInformationAssetRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - name
+        - organizationId
+        - ownerId
+        - criticality
+        - riskLevel
+        - security
+      properties:
+        type:
+          type: string
+          enum:
+            - information_system
+            - information_infrastructure_object
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+        shortName:
+          type: string
+          maxLength: 255
+        organizationId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        ownerId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        purpose:
+          type: string
+          maxLength: 4000
+        criticality:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        riskLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        security:
+          $ref: '#/components/schemas/SecurityProfile'
 
     InformationAsset:
       type: object
