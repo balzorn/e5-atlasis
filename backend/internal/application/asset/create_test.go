@@ -2,9 +2,11 @@ package asset
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
+	"github.com/balzorn/e5-atlasis/backend/internal/ports"
 )
 
 type fakeAssetRepository struct {
@@ -29,15 +31,19 @@ func (r *fakeAssetRepository) GetByID(
 	return nil, nil
 }
 
-type fakeAssetIDGenerator struct{}
+type fakeAssetIDGenerator struct {
+	called bool
+}
 
-func (fakeAssetIDGenerator) Next(context.Context) (domainasset.AssetID, error) {
+func (g *fakeAssetIDGenerator) Next(context.Context) (domainasset.AssetID, error) {
+	g.called = true
 	return domainasset.ParseAssetID("IA00001")
 }
 
 func TestCreateAsset(t *testing.T) {
 	repo := &fakeAssetRepository{}
-	uc := NewCreateAssetUseCase(repo, fakeAssetIDGenerator{})
+	ids := &fakeAssetIDGenerator{}
+	uc := NewCreateAssetUseCase(repo, ids)
 
 	got, err := uc.Execute(context.Background(), CreateAssetCommand{
 		Type:           domainasset.AssetTypeInformationSystem,
@@ -47,6 +53,13 @@ func TestCreateAsset(t *testing.T) {
 		Purpose:        "Testing",
 		Criticality:    domainasset.CriticalityHigh,
 		RiskLevel:      domainasset.RiskLevelMedium,
+		Security: domainasset.SecurityProfile{
+			ProtectionRequired:  false,
+			ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
+			AttestationStatus:  domainasset.AttestationStatusNotRequired,
+			CyberCenterRequired: false,
+		},
+		CreatedBy: "USR001",
 	})
 
 	if err != nil {
@@ -67,5 +80,43 @@ func TestCreateAsset(t *testing.T) {
 
 	if repo.createdVersion.Version != 1 {
 		t.Fatalf("created version = %d, want 1", repo.createdVersion.Version)
+	}
+
+	if repo.createdVersion.CreatedBy != "USR001" {
+		t.Fatalf("created by = %q, want USR001", repo.createdVersion.CreatedBy)
+	}
+
+	if repo.createdVersion.CreatedAt.IsZero() {
+		t.Fatal("created at must be set")
+	}
+}
+
+func TestCreateAssetRejectsInvalidCommandBeforeIDAllocation(t *testing.T) {
+	ids := &fakeAssetIDGenerator{}
+	uc := NewCreateAssetUseCase(&fakeAssetRepository{}, ids)
+
+	_, err := uc.Execute(context.Background(), CreateAssetCommand{
+		Type:           domainasset.AssetTypeInformationSystem,
+		Name:           " ",
+		OrganizationID: "ORG001",
+		OwnerID:        "USR001",
+		Criticality:    domainasset.CriticalityMedium,
+		RiskLevel:      domainasset.RiskLevelMedium,
+		Security: domainasset.SecurityProfile{
+			ProtectionStatus:  domainasset.ProtectionStatusNotRequired,
+			AttestationStatus: domainasset.AttestationStatusNotRequired,
+		},
+		CreatedBy: "USR001",
+	})
+	if err == nil {
+		t.Fatal("Execute() error = nil, want validation error")
+	}
+
+	if !errors.Is(err, ports.ErrInvalidInput) {
+		t.Fatalf("Execute() error = %v, want ErrInvalidInput", err)
+	}
+
+	if ids.called {
+		t.Fatal("ID generator was called for invalid command")
 	}
 }
