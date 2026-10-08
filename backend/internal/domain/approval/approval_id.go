@@ -14,3 +14,7 @@ func ParseApprovalID(value string) (ID, error) {
 
 	return ID(value), nil
 }
+
+func (id ID) String() string {
+	return string(id)
+}

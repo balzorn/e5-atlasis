@@ -32,6 +32,7 @@ func (r *fakeChangeGetRepository) GetByID(
 func (r *fakeChangeGetRepository) Save(
 	_ context.Context,
 	_ domainchange.ChangeRequest,
+	_ domainchange.Status,
 ) error {
 	return nil
 }

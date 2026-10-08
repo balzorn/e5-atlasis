@@ -241,7 +241,7 @@ func (r *ChangeRequestRepository) Save(
 	}
 
 	if commandTag.RowsAffected() != 1 {
-		return fmt.Errorf("change request %q not found", cr.ID)
+		return fmt.Errorf("change request %q: %w", cr.ID, ports.ErrConflict)
 	}
 
 	return nil

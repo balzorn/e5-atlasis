@@ -10,17 +10,7 @@ import (
 
 type ID string
 
-var changeRequestIDPattern = regexp.MustCompile(`^CR[0-9]{5}package change
-
-import (
-	"fmt"
-	"regexp"
-	"time"
-
-	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
-)
-
-)
+var changeRequestIDPattern = regexp.MustCompile(`^CR[0-9]{5}$`)
 
 func ParseChangeRequestID(value string) (ID, error) {
 	if !changeRequestIDPattern.MatchString(value) {
