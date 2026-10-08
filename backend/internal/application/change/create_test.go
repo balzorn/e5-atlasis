@@ -83,7 +83,7 @@ func TestCreateChangeRequest(t *testing.T) {
 			},
 		},
 		repo,
-		&fakeChangeRequestIDGenerator{},
+		&&fakeChangeRequestIDGenerator{},
 	)
 
 	cr, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
@@ -145,7 +145,7 @@ func TestCreateChangeRequestRejectsDuplicateFields(t *testing.T) {
 			},
 		},
 		&fakeChangeRequestRepository{},
-		fakeChangeRequestIDGenerator{},
+		&fakeChangeRequestIDGenerator{},
 	)
 
 	_, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
@@ -181,7 +181,7 @@ func TestCreateChangeRequestRejectsNoOpChange(t *testing.T) {
 			},
 		},
 		&fakeChangeRequestRepository{},
-		fakeChangeRequestIDGenerator{},
+		&fakeChangeRequestIDGenerator{},
 	)
 
 	_, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
