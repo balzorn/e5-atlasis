@@ -165,15 +165,21 @@ tasks:
     cmds:
       - go mod verify
 
+  openapi:check:
+    desc: Validate the OpenAPI contract
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - go test ./internal/openapicontract -count=1
+
   check:
     desc: Run the full local verification suite
     cmds:
+      - task: openapi:check
       - task: test:unit
       - task: test:postgres
       - task: vet
       - task: mod:verify
       - task: test:race
-
   api:
     desc: Run the API against the local development database
     dir: '{{.BACKEND_DIR}}'
