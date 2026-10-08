@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	maxAssetNameLength       = 500
-	maxAssetShortNameLength  = 255
-	maxAssetOrganizationID   = 128
-	maxAssetOwnerID          = 128
-	maxAssetPurposeLength    = 4000
-	maxAssetCreatedByLength  = 128
+	maxAssetNameLength      = 500
+	maxAssetShortNameLength = 255
+	maxAssetOrganizationID  = 128
+	maxAssetOwnerID         = 128
+	maxAssetPurposeLength   = 4000
+	maxAssetCreatedByLength = 128
 )
 
 type CreateAssetCommand struct {

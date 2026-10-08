@@ -163,8 +163,8 @@ func newTestHandler() *Handler {
 			RiskLevel:      domainasset.RiskLevelMedium,
 			Security: domainasset.SecurityProfile{
 				ProtectionRequired:  false,
-				ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
-				AttestationStatus:  domainasset.AttestationStatusNotRequired,
+				ProtectionStatus:    domainasset.ProtectionStatusNotRequired,
+				AttestationStatus:   domainasset.AttestationStatusNotRequired,
 				CyberCenterRequired: false,
 			},
 			CurrentVersion: 1,

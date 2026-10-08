@@ -55,8 +55,8 @@ func TestCreateAsset(t *testing.T) {
 		RiskLevel:      domainasset.RiskLevelMedium,
 		Security: domainasset.SecurityProfile{
 			ProtectionRequired:  false,
-			ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
-			AttestationStatus:  domainasset.AttestationStatusNotRequired,
+			ProtectionStatus:    domainasset.ProtectionStatusNotRequired,
+			AttestationStatus:   domainasset.AttestationStatusNotRequired,
 			CyberCenterRequired: false,
 		},
 		CreatedBy: "USR001",
