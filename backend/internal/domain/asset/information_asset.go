@@ -22,6 +22,10 @@ func (a InformationAsset) Validate() error {
 		return err
 	}
 
+	return a.ValidateAttributes()
+}
+
+func (a InformationAsset) ValidateAttributes() error {
 	switch a.Type {
 	case AssetTypeInformationSystem,
 		AssetTypeInformationInfrastructureObject:
@@ -39,6 +43,36 @@ func (a InformationAsset) Validate() error {
 
 	if a.OwnerID == "" {
 		return fmt.Errorf("owner ID is required")
+	}
+
+	switch a.Status {
+	case AssetStatusDraft, AssetStatusActive, AssetStatusSuspended, AssetStatusRetired:
+	default:
+		return fmt.Errorf("invalid asset status %q", a.Status)
+	}
+
+	switch a.Criticality {
+	case CriticalityLow, CriticalityMedium, CriticalityHigh, CriticalityCritical:
+	default:
+		return fmt.Errorf("invalid asset criticality %q", a.Criticality)
+	}
+
+	switch a.RiskLevel {
+	case RiskLevelLow, RiskLevelMedium, RiskLevelHigh, RiskLevelCritical:
+	default:
+		return fmt.Errorf("invalid asset risk level %q", a.RiskLevel)
+	}
+
+	switch a.Security.ProtectionStatus {
+	case ProtectionStatusNotRequired, ProtectionStatusRequired, ProtectionStatusInProgress, ProtectionStatusImplemented:
+	default:
+		return fmt.Errorf("invalid protection status %q", a.Security.ProtectionStatus)
+	}
+
+	switch a.Security.AttestationStatus {
+	case AttestationStatusNotRequired, AttestationStatusRequired, AttestationStatusInProgress, AttestationStatusAttested, AttestationStatusExpired:
+	default:
+		return fmt.Errorf("invalid attestation status %q", a.Security.AttestationStatus)
 	}
 
 	return nil
