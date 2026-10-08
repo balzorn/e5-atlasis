@@ -2,11 +2,13 @@ package change
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
+	"github.com/balzorn/e5-atlasis/backend/internal/ports"
 )
 
 type fakeAssetRepository struct {
@@ -55,9 +57,12 @@ func (r *fakeChangeRequestRepository) Save(
 	return nil
 }
 
-type fakeChangeRequestIDGenerator struct{}
+type fakeChangeRequestIDGenerator struct {
+	called bool
+}
 
-func (fakeChangeRequestIDGenerator) Next(context.Context) (domainchange.ID, error) {
+func (g *fakeChangeRequestIDGenerator) Next(context.Context) (domainchange.ID, error) {
+	g.called = true
 	return "CR00001", nil
 }
 
@@ -78,7 +83,7 @@ func TestCreateChangeRequest(t *testing.T) {
 			},
 		},
 		repo,
-		fakeChangeRequestIDGenerator{},
+		&fakeChangeRequestIDGenerator{},
 	)
 
 	cr, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
@@ -193,6 +198,46 @@ func TestCreateChangeRequestRejectsNoOpChange(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Execute() error = nil, want no-op change error")
+	}
+}
+
+func TestCreateChangeRequestRejectsVersionConflictBeforeIDAllocation(t *testing.T) {
+	assetID, _ := domainasset.ParseAssetID("IA00001")
+	ids := &fakeChangeRequestIDGenerator{}
+
+	uc := NewCreateChangeRequestUseCase(
+		fakeAssetRepository{
+			asset: domainasset.InformationAsset{
+				ID:             assetID,
+				Type:           domainasset.AssetTypeInformationSystem,
+				Name:           "Test System",
+				OrganizationID: "ORG001",
+				OwnerID:        "USR001",
+				CurrentVersion: 3,
+			},
+		},
+		&fakeChangeRequestRepository{},
+		ids,
+	)
+
+	_, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
+		AssetID:     assetID,
+		BaseVersion: 2,
+		Initiator:   "USR002",
+		Title:       "Change owner",
+		Changes: []ChangeProposal{{
+			Field:    domainasset.FieldOwnerID,
+			NewValue: domainasset.NewStringFieldValue("USR003"),
+		}},
+	})
+	if err == nil {
+		t.Fatal("Execute() error = nil, want conflict")
+	}
+	if !errors.Is(err, ports.ErrConflict) {
+		t.Fatalf("Execute() error = %v, want ErrConflict", err)
+	}
+	if ids.called {
+		t.Fatal("ID generator was called for conflicting base version")
 	}
 }
 
