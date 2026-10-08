@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
 )
@@ -167,6 +169,10 @@ func (r *AssetRepository) GetByID(
 		&cyberCenterRequired,
 	)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("information asset %q: %w", id, ports.ErrNotFound)
+		}
+
 		return nil, fmt.Errorf("get information asset: %w", err)
 	}
 
