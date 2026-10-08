@@ -145,3 +145,19 @@ The following state changes must be committed together:
 - Change Request -> AssetVersion linkage
 
 Infrastructure owns the database transaction boundary.
+
+## PostgreSQL concurrency
+
+Operations modifying Information Assets must use transactional concurrency control with database-enforced version checks.
+
+Change Request application must verify that:
+
+current_version = ChangeRequest.base_version
+
+inside the same database transaction that persists:
+- the new AssetVersion;
+- the current Information Asset version;
+- the Change Request status.
+
+A concurrent application of the same or another CR must be serialized by the database
+and fail with a conflict rather than silently overwriting a newer version.
