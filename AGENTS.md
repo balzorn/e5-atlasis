@@ -88,6 +88,8 @@ Or run the full verification suite:
 task check
 
 Use `task api` for the local API and `task db:up` for the local PostgreSQL container.
+Use `task db:migrate` to apply pending development migrations. Use `task db:reset CONFIRM=1` only for an intentional destructive local reset.
+Use `task test:unit` for tests that must not require PostgreSQL.
 
 ## Development rules
 

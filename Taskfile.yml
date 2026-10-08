@@ -7,6 +7,10 @@ vars:
   DEV_DATABASE_URL: '{{.DATABASE_URL | default "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis?sslmode=disable"}}'
   TEST_DATABASE_URL: '{{.E5_ATLASIS_TEST_DATABASE_URL | default "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis_test?sslmode=disable"}}'
   HTTP_ADDR: '{{.HTTP_ADDR | default "127.0.0.1:8080"}}'
+  POSTGRES_SERVICE: postgres
+  DEV_DB_NAME: e5_atlasis
+  DEV_DB_USER: e5_atlasis
+  CONFIRM: '{{.CONFIRM | default "0"}}'
 
 tasks:
   default:
@@ -29,11 +33,72 @@ tasks:
     cmds:
       - docker compose ps postgres
 
+  db:migrate:
+    desc: Apply pending PostgreSQL migrations to the local development database
+    cmds:
+      - |
+        set -eu
+
+        psql_cmd="docker compose exec -T {{.POSTGRES_SERVICE}} psql -U {{.DEV_DB_USER}} -d {{.DEV_DB_NAME}}"
+
+        schema_exists="$($psql_cmd -Atqc "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'information_assets')")"
+
+        $psql_cmd -v ON_ERROR_STOP=1 -c "
+          CREATE TABLE IF NOT EXISTS schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        "
+
+        migration_count="$($psql_cmd -Atqc "SELECT COUNT(*) FROM schema_migrations")"
+
+        if [ "$schema_exists" = "t" ] && [ "$migration_count" = "0" ]; then
+          echo "Migration history is not initialized for the existing database."
+          echo "Run 'task db:reset CONFIRM=1' once to recreate the local schema and initialize migration history."
+          exit 1
+        fi
+
+        for migration in backend/migrations/*.sql; do
+          version="$(basename "$migration")"
+          applied="$($psql_cmd -Atqc "SELECT CASE WHEN EXISTS (SELECT 1 FROM schema_migrations WHERE version = '$version') THEN 1 ELSE 0 END")"
+
+          if [ "$applied" = "1" ]; then
+            continue
+          fi
+
+          echo "Applying $version"
+
+          {
+            cat "$migration"
+            printf "\nINSERT INTO schema_migrations(version) VALUES ('%s');\n" "$version"
+          } | docker compose exec -T {{.POSTGRES_SERVICE}} psql -U {{.DEV_DB_USER}} -d {{.DEV_DB_NAME}} -v ON_ERROR_STOP=1 --single-transaction -f -
+        done
+
+  db:reset:
+    desc: Destructively recreate the local development schema and apply all migrations
+    cmds:
+      - |
+        if [ "{{.CONFIRM}}" != "1" ]; then
+          echo "Refusing to reset the development database."
+          echo "Use: task db:reset CONFIRM=1"
+          exit 1
+        fi
+      - task: db:up
+      - |
+        docker compose exec -T {{.POSTGRES_SERVICE}} psql -U {{.DEV_DB_USER}} -d {{.DEV_DB_NAME}} -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+      - task: db:migrate
+
   fmt:
     desc: Format all Go packages
     dir: '{{.BACKEND_DIR}}'
     cmds:
       - go fmt ./...
+
+  test:unit:
+    desc: Run unit tests without PostgreSQL integration tests
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - go test ./internal/domain/... ./internal/application/... ./internal/httpapi
 
   test:
     desc: Run the complete Go test suite
@@ -75,7 +140,8 @@ tasks:
   check:
     desc: Run the full local verification suite
     cmds:
-      - task: test
+      - task: test:unit
+      - task: test:postgres
       - task: vet
       - task: mod:verify
       - task: test:race

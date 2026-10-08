@@ -18,7 +18,9 @@ Common commands:
 
 ```bash
 task db:up
+task db:migrate
 task fmt
+task test:unit
 task test
 task test:postgres
 task test:race
@@ -29,6 +31,16 @@ task api
 ```
 
 The default development PostgreSQL database is `e5_atlasis`.
+
+Use `task db:migrate` to apply pending migrations to the development database. Migration history is stored in `schema_migrations`.
+
+For a clean local development database, stop the API first and run:
+
+```bash
+task db:reset CONFIRM=1
+```
+
+`db:reset` is intentionally destructive and recreates the local `public` schema before applying all migrations.
 
 PostgreSQL integration tests use a separate `e5_atlasis_test` database and must never run against the development database. The integration test harness creates the test database and applies the repository migrations automatically.
 
