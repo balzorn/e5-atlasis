@@ -291,7 +291,7 @@ func TestPostgreSQLChangeApplierRollsBackOnCRStateMismatch(t *testing.T) {
 		State:           stubVersion2,
 		CreatedBy:       "USR001",
 		CreatedAt:       now,
-		ChangeRequestID: stringPointer(cr.ID.String()),
+		ChangeRequestID: integrationStringPointer(cr.ID.String()),
 	}
 
 	// Insert a matching CR in DRAFT state so the final status guard fails.
@@ -366,4 +366,8 @@ func truncateIntegrationTables(t *testing.T, db *DB) {
 	if err != nil {
 		t.Fatalf("truncate integration tables: %v", err)
 	}
+}
+
+func integrationStringPointer(value string) *string {
+	return &value
 }
