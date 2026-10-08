@@ -54,8 +54,15 @@ func (fakeAssetIDGenerator) Next(context.Context) (domainasset.AssetID, error) {
 	return domainasset.ParseAssetID("IA00001")
 }
 
+type fakeChangeRequestIDGenerator struct{}
+
+func (fakeChangeRequestIDGenerator) Next(context.Context) (domainchange.ID, error) {
+	return "CR00001", nil
+}
+
 type fakeChangeRequestRepository struct {
 	changeRequest *domainchange.ChangeRequest
+	created       *domainchange.ChangeRequest
 	err           error
 }
 
@@ -117,6 +124,11 @@ func newTestHandler() *Handler {
 			},
 		}),
 		applicationasset.NewCreateAssetUseCase(repo, fakeAssetIDGenerator{}),
+		applicationchange.NewCreateChangeRequestUseCase(
+			repo,
+			&fakeChangeRequestRepository{},
+			fakeChangeRequestIDGenerator{},
+		),
 	)
 }
 
@@ -235,6 +247,82 @@ func TestCreateAssetRejectsTrailingJSON(t *testing.T) {
 	}
 }
 
+func TestCreateChangeRequest(t *testing.T) {
+	body := strings.NewReader("{\n" +
+		"  \"assetId\": \"IA00001\",\n" +
+		"  \"baseVersion\": 1,\n" +
+		"  \"title\": \"Change owner\",\n" +
+		"  \"description\": \"Change the asset owner\",\n" +
+		"  \"changes\": [{\n" +
+		"    \"field\": \"owner_id\",\n" +
+		"    \"newValue\": {\n" +
+		"      \"kind\": \"string\",\n" +
+		"      \"value\": \"USR002\"\n" +
+		"    }\n" +
+		"  }]\n" +
+		"}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/change-requests", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
+	}
+
+	if got := rec.Header().Get("Location"); got != "/api/v1/change-requests/CR00001" {
+		t.Fatalf("Location = %q, want /api/v1/change-requests/CR00001", got)
+	}
+
+	bodyText := rec.Body.String()
+	for _, fragment := range []string{
+		"CR00001",
+		"\"assetId\":\"IA00001\"",
+		"\"baseVersion\":1",
+		"\"status\":\"DRAFT\"",
+		"\"field\":\"owner_id\"",
+		"\"oldValue\":{\"kind\":\"string\",\"value\":\"USR001\"}",
+		"\"newValue\":{\"kind\":\"string\",\"value\":\"USR002\"}",
+	} {
+		if !strings.Contains(bodyText, fragment) {
+			t.Fatalf("body = %s, missing %s", bodyText, fragment)
+		}
+	}
+}
+
+func TestCreateChangeRequestRejectsVersionConflict(t *testing.T) {
+	body := strings.NewReader("{\"assetId\":\"IA00001\",\"baseVersion\":2,\"title\":\"Change owner\",\"changes\":[{\"field\":\"owner_id\",\"newValue\":{\"kind\":\"string\",\"value\":\"USR002\"}}]}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/change-requests", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCreateChangeRequestRejectsInvalidFieldValue(t *testing.T) {
+	body := strings.NewReader("{\"assetId\":\"IA00001\",\"baseVersion\":1,\"title\":\"Change owner\",\"changes\":[{\"field\":\"owner_id\",\"newValue\":{\"kind\":\"boolean\",\"value\":true}}]}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/change-requests", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGetAssetByID(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/assets/IA00001", nil)
@@ -271,6 +359,11 @@ func TestGetAssetByIDReturnsNotFound(t *testing.T) {
 		applicationasset.NewGetAssetUseCase(repo),
 		applicationchange.NewGetChangeRequestUseCase(&fakeChangeRequestRepository{}),
 		applicationasset.NewCreateAssetUseCase(repo, fakeAssetIDGenerator{}),
+		applicationchange.NewCreateChangeRequestUseCase(
+			repo,
+			&fakeChangeRequestRepository{},
+			fakeChangeRequestIDGenerator{},
+		),
 	)
 
 	rec := httptest.NewRecorder()
