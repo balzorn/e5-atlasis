@@ -17,6 +17,9 @@ func (a *InformationAsset) ApplyField(
 
 	case FieldNameField:
 		v, _ := value.StringValue()
+		if v == "" {
+			return fmt.Errorf("asset name is required")
+		}
 		a.Name = v
 
 	case FieldShortName:
@@ -39,10 +42,16 @@ func (a *InformationAsset) ApplyField(
 
 	case FieldOrganizationID:
 		v, _ := value.StringValue()
+		if v == "" {
+			return fmt.Errorf("organization ID is required")
+		}
 		a.OrganizationID = v
 
 	case FieldOwnerID:
 		v, _ := value.StringValue()
+		if v == "" {
+			return fmt.Errorf("owner ID is required")
+		}
 		a.OwnerID = v
 
 	case FieldPurpose:
@@ -77,5 +86,5 @@ func (a *InformationAsset) ApplyField(
 		return fmt.Errorf("field %q cannot be changed", field)
 	}
 
-	return a.Validate()
+	return nil
 }
