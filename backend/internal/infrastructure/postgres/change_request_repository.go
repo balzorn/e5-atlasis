@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
@@ -133,6 +135,10 @@ func (r *ChangeRequestRepository) GetByID(
 		&cr.UpdatedAt,
 	)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("change request %q: %w", id, ports.ErrNotFound)
+		}
+
 		return nil, fmt.Errorf("get change request: %w", err)
 	}
 
