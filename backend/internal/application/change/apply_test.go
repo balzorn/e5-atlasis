@@ -36,6 +36,15 @@ func TestApplyChangeRequest(t *testing.T) {
 			Name:           "Test System",
 			OrganizationID: "ORG001",
 			OwnerID:        "USR001",
+			Status:         domainasset.AssetStatusDraft,
+			Criticality:    domainasset.CriticalityHigh,
+			RiskLevel:      domainasset.RiskLevelMedium,
+			Security: domainasset.SecurityProfile{
+				ProtectionRequired:  true,
+				ProtectionStatus:    domainasset.ProtectionStatusImplemented,
+				AttestationStatus:   domainasset.AttestationStatusAttested,
+				CyberCenterRequired: false,
+			},
 			CurrentVersion: 3,
 		},
 	}
