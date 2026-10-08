@@ -8,7 +8,275 @@ info:
 servers:
   - url: /api/v1
 
-paths: {}
+paths:
+  /assets/{assetId}:
+    get:
+      operationId: getInformationAsset
+      summary: Get an Information Asset
+      parameters:
+        - $ref: '#/components/parameters/AssetId'
+      responses:
+        '200':
+          description: Information Asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformationAsset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}:
+    get:
+      operationId: getChangeRequest
+      summary: Get a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+      responses:
+        '200':
+          description: Change Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
-  schemas: {}
+  parameters:
+    AssetId:
+      name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^IA[0-9]{5}$'
+      example: IA00001
+
+    ChangeRequestId:
+      name: changeRequestId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      example: CR00001
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    InformationAsset:
+      type: object
+      required:
+        - id
+        - type
+        - name
+        - shortName
+        - status
+        - organizationId
+        - ownerId
+        - purpose
+        - criticality
+        - riskLevel
+        - security
+        - currentVersion
+      properties:
+        id:
+          type: string
+          pattern: '^IA[0-9]{5}$'
+        type:
+          type: string
+          enum:
+            - information_system
+            - information_infrastructure_object
+        name:
+          type: string
+        shortName:
+          type: string
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - ACTIVE
+            - SUSPENDED
+            - RETIRED
+        organizationId:
+          type: string
+        ownerId:
+          type: string
+        purpose:
+          type: string
+        criticality:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        riskLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+        security:
+          $ref: '#/components/schemas/SecurityProfile'
+        currentVersion:
+          type: integer
+          minimum: 1
+
+    SecurityProfile:
+      type: object
+      required:
+        - protectionRequired
+        - protectionStatus
+        - attestationStatus
+        - cyberCenterRequired
+      properties:
+        protectionRequired:
+          type: boolean
+        protectionStatus:
+          type: string
+          enum:
+            - NOT_REQUIRED
+            - REQUIRED
+            - IN_PROGRESS
+            - IMPLEMENTED
+        attestationStatus:
+          type: string
+          enum:
+            - NOT_REQUIRED
+            - REQUIRED
+            - IN_PROGRESS
+            - ATTESTED
+            - EXPIRED
+        cyberCenterRequired:
+          type: boolean
+
+    ChangeRequest:
+      type: object
+      required:
+        - id
+        - assetId
+        - baseVersion
+        - status
+        - initiator
+        - title
+        - description
+        - changes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        assetId:
+          type: string
+          pattern: '^IA[0-9]{5}$'
+        baseVersion:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - SUBMITTED
+            - UNDER_REVIEW
+            - CHANGES_REQUESTED
+            - APPROVED
+            - APPLYING
+            - APPLIED
+            - REJECTED
+            - CANCELLED
+        initiator:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldChange'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FieldChange:
+      type: object
+      required:
+        - id
+        - field
+        - oldValue
+        - newValue
+      properties:
+        id:
+          type: string
+        field:
+          type: string
+        oldValue:
+          $ref: '#/components/schemas/FieldValue'
+        newValue:
+          $ref: '#/components/schemas/FieldValue'
+
+    FieldValue:
+      oneOf:
+        - type: object
+          required:
+            - kind
+            - value
+          properties:
+            kind:
+              const: string
+            value:
+              type: string
+        - type: object
+          required:
+            - kind
+            - value
+          properties:
+            kind:
+              const: boolean
+            value:
+              type: boolean
