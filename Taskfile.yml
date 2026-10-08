@@ -1,0 +1,96 @@
+version: '3'
+
+output: group
+
+vars:
+  BACKEND_DIR: backend
+  DEV_DATABASE_URL: '{{.DATABASE_URL | default "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis?sslmode=disable"}}'
+  TEST_DATABASE_URL: '{{.E5_ATLASIS_TEST_DATABASE_URL | default "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis_test?sslmode=disable"}}'
+  HTTP_ADDR: '{{.HTTP_ADDR | default "127.0.0.1:8080"}}'
+
+tasks:
+  default:
+    desc: Show available development tasks
+    cmds:
+      - task --list
+
+  db:up:
+    desc: Start the local PostgreSQL container
+    cmds:
+      - docker compose up -d postgres
+
+  db:down:
+    desc: Stop the local PostgreSQL container
+    cmds:
+      - docker compose down
+
+  db:status:
+    desc: Show local PostgreSQL container status
+    cmds:
+      - docker compose ps postgres
+
+  fmt:
+    desc: Format all Go packages
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - go fmt ./...
+
+  test:
+    desc: Run the complete Go test suite
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      E5_ATLASIS_TEST_DATABASE_URL: '{{.TEST_DATABASE_URL}}'
+    cmds:
+      - go test ./...
+
+  test:postgres:
+    desc: Run PostgreSQL integration tests only
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      E5_ATLASIS_TEST_DATABASE_URL: '{{.TEST_DATABASE_URL}}'
+    cmds:
+      - go test ./internal/infrastructure/postgres -count=1
+
+  test:race:
+    desc: Run the complete Go test suite with the race detector
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      E5_ATLASIS_TEST_DATABASE_URL: '{{.TEST_DATABASE_URL}}'
+      CGO_ENABLED: '1'
+    cmds:
+      - go test -race ./...
+
+  vet:
+    desc: Run go vet
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - go vet ./...
+
+  mod:verify:
+    desc: Verify Go module contents
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - go mod verify
+
+  check:
+    desc: Run the full local verification suite
+    cmds:
+      - task: test
+      - task: vet
+      - task: mod:verify
+      - task: test:race
+
+  api:
+    desc: Run the API against the local development database
+    dir: '{{.BACKEND_DIR}}'
+    env:
+      DATABASE_URL: '{{.DEV_DATABASE_URL}}'
+      HTTP_ADDR: '{{.HTTP_ADDR}}'
+    cmds:
+      - go run ./cmd/atlas-api
+
+  dev:
+    desc: Start PostgreSQL and then the API
+    cmds:
+      - task: db:up
+      - task: api

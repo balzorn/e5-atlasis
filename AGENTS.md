@@ -71,9 +71,23 @@ Every domain rule must have unit tests.
 
 Every application use case must have tests.
 
-Run:
+PostgreSQL integration tests must use a dedicated test database and must never connect to the development database.
+The default integration database is `e5_atlasis_test`.
+The test database URL can be overridden with `E5_ATLASIS_TEST_DATABASE_URL`.
+The integration test helper rejects database names that do not end with `_test`.
 
-go test ./...
+Run the standard local verification workflow:
+
+task test
+task vet
+task mod:verify
+task test:race
+
+Or run the full verification suite:
+
+task check
+
+Use `task api` for the local API and `task db:up` for the local PostgreSQL container.
 
 ## Development rules
 

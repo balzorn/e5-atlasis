@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 )
 
-const integrationDatabaseURL = "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis?sslmode=disable"
 
 func TestPostgreSQLFullChangeApplication(t *testing.T) {
 
@@ -529,16 +527,15 @@ func TestPostgreSQLConcurrentChangeApplication(t *testing.T) {
 func newIntegrationDB(t *testing.T) *DB {
 	t.Helper()
 
-	databaseURL := os.Getenv("E5_ATLASIS_TEST_DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = integrationDatabaseURL
-	}
+	databaseURL := newIntegrationTestURL()
+	ensureIntegrationDatabase(t, databaseURL)
 
 	db, err := New(context.Background(), databaseURL)
 	if err != nil {
 		t.Fatalf("connect to PostgreSQL: %v", err)
 	}
 
+	ensureIntegrationSchema(t, db)
 	t.Cleanup(db.Close)
 
 	return db
@@ -559,6 +556,18 @@ func truncateIntegrationTables(t *testing.T, db *DB) {
 	)
 	if err != nil {
 		t.Fatalf("truncate integration tables: %v", err)
+	}
+
+	for _, sequence := range []string{
+		"information_asset_id_seq",
+		"change_request_id_seq",
+	} {
+		if _, err := db.pool.Exec(
+			context.Background(),
+			"ALTER SEQUENCE "+sequence+" RESTART WITH 1",
+		); err != nil {
+			t.Fatalf("reset integration sequence %s: %v", sequence, err)
+		}
 	}
 }
 
