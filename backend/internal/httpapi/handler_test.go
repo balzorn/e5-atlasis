@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -15,15 +16,19 @@ import (
 )
 
 type fakeAssetRepository struct {
-	asset *domainasset.InformationAsset
-	err   error
+	asset          *domainasset.InformationAsset
+	createdAsset   *domainasset.InformationAsset
+	createdVersion *domainasset.AssetVersion
+	err            error
 }
 
 func (r *fakeAssetRepository) Create(
 	_ context.Context,
-	_ domainasset.InformationAsset,
-	_ domainasset.AssetVersion,
+	a domainasset.InformationAsset,
+	v domainasset.AssetVersion,
 ) error {
+	r.createdAsset = &a
+	r.createdVersion = &v
 	return nil
 }
 
@@ -31,7 +36,22 @@ func (r *fakeAssetRepository) GetByID(
 	_ context.Context,
 	_ domainasset.AssetID,
 ) (*domainasset.InformationAsset, error) {
-	return r.asset, r.err
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.asset != nil {
+		return r.asset, nil
+	}
+	if r.createdAsset != nil {
+		return r.createdAsset, nil
+	}
+	return nil, ports.ErrNotFound
+}
+
+type fakeAssetIDGenerator struct{}
+
+func (fakeAssetIDGenerator) Next(context.Context) (domainasset.AssetID, error) {
+	return domainasset.ParseAssetID("IA00001")
 }
 
 type fakeChangeRequestRepository struct {
@@ -112,6 +132,106 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
+func TestCreateAsset(t *testing.T) {
+	body := strings.NewReader("{\n" +
+		"  \"type\": \"information_system\",\n" +
+		"  \"name\": \"Registry\",\n" +
+		"  \"organizationId\": \"ORG001\",\n" +
+		"  \"ownerId\": \"USR001\",\n" +
+		"  \"purpose\": \"Information asset registry\",\n" +
+		"  \"criticality\": \"HIGH\",\n" +
+		"  \"riskLevel\": \"MEDIUM\",\n" +
+		"  \"security\": {\n" +
+		"    \"protectionRequired\": true,\n" +
+		"    \"protectionStatus\": \"IMPLEMENTED\",\n" +
+		"    \"attestationStatus\": \"ATTESTED\",\n" +
+		"    \"cyberCenterRequired\": true\n" +
+		"  }\n" +
+		"}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/assets", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
+	}
+
+	if got := rec.Header().Get("Location"); got != "/api/v1/assets/IA00001" {
+		t.Fatalf("Location = %q, want /api/v1/assets/IA00001", got)
+	}
+
+	if !strings.Contains(rec.Body.String(), "\"status\":\"DRAFT\"") {
+		t.Fatalf("body = %s, want DRAFT status", rec.Body.String())
+	}
+
+	if strings.Contains(rec.Body.String(), "\"status\":\"ACTIVE\"") {
+		t.Fatalf("body = %s, status must not be client-controlled", rec.Body.String())
+	}
+}
+
+func TestCreateAssetRejectsUnknownFields(t *testing.T) {
+	body := strings.NewReader("{\"type\":\"information_system\",\"name\":\"Registry\",\"organizationId\":\"ORG001\",\"ownerId\":\"USR001\",\"criticality\":\"HIGH\",\"riskLevel\":\"MEDIUM\",\"status\":\"ACTIVE\",\"security\":{\"protectionRequired\":false,\"protectionStatus\":\"NOT_REQUIRED\",\"attestationStatus\":\"NOT_REQUIRED\",\"cyberCenterRequired\":false}}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/assets", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestCreateAssetRejectsMissingActor(t *testing.T) {
+	body := bytes.NewBufferString("{\"type\":\"information_system\"}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/assets", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestCreateAssetRejectsUnsupportedMediaType(t *testing.T) {
+	body := bytes.NewBufferString("{}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/assets", body)
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("status = %d, want 415", rec.Code)
+	}
+}
+
+func TestCreateAssetRejectsTrailingJSON(t *testing.T) {
+	body := bytes.NewBufferString("{\"type\":\"information_system\"} {\"type\":\"information_system\"}")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/assets", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandler().Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
 func TestGetAssetByID(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/assets/IA00001", nil)
@@ -143,9 +263,11 @@ func TestGetAssetByIDRejectsInvalidID(t *testing.T) {
 }
 
 func TestGetAssetByIDReturnsNotFound(t *testing.T) {
+	repo := &fakeAssetRepository{}
 	handler := NewHandler(
-		applicationasset.NewGetAssetUseCase(&fakeAssetRepository{}),
+		applicationasset.NewGetAssetUseCase(repo),
 		applicationchange.NewGetChangeRequestUseCase(&fakeChangeRequestRepository{}),
+		applicationasset.NewCreateAssetUseCase(repo, fakeAssetIDGenerator{}),
 	)
 
 	rec := httptest.NewRecorder()
