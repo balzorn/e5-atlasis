@@ -3,7 +3,6 @@ package change
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
@@ -21,8 +20,8 @@ type CreateChangeRequestCommand struct {
 }
 
 type ChangeProposal struct {
-	Field    string
-	NewValue any
+	Field    domainasset.FieldName
+	NewValue domainasset.FieldValue
 }
 
 type CreateChangeRequestUseCase struct {
@@ -69,28 +68,29 @@ func (uc *CreateChangeRequestUseCase) Execute(
 	seenFields := make(map[string]struct{}, len(cmd.Changes))
 
 	for i, proposal := range cmd.Changes {
-		field, err := domainasset.ParseFieldName(proposal.Field)
-		if err != nil {
+		field := proposal.Field
+
+		if _, exists := seenFields[string(field)]; exists {
+			return nil, fmt.Errorf("field %q appears more than once", field)
+		}
+		seenFields[string(field)] = struct{}{}
+
+		if err := proposal.NewValue.ValidateFor(field); err != nil {
 			return nil, err
 		}
-
-		if _, exists := seenFields[proposal.Field]; exists {
-			return nil, fmt.Errorf("field %q appears more than once", proposal.Field)
-		}
-		seenFields[proposal.Field] = struct{}{}
 
 		oldValue, err := current.FieldValue(field)
 		if err != nil {
 			return nil, err
 		}
 
-		if reflect.DeepEqual(oldValue, proposal.NewValue) {
-			return nil, fmt.Errorf("field %q has no actual change", proposal.Field)
+		if oldValue.Equal(proposal.NewValue) {
+			return nil, fmt.Errorf("field %q has no actual change", field)
 		}
 
 		changes = append(changes, domainchange.FieldChange{
 			ID:       fmt.Sprintf("CHG%05d", i+1),
-			Field:    proposal.Field,
+			Field:    field,
 			OldValue: oldValue,
 			NewValue: proposal.NewValue,
 		})

@@ -1,6 +1,9 @@
 package asset
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Version int
 
@@ -22,5 +25,6 @@ type AssetVersion struct {
 	Version         Version
 	State           InformationAsset
 	CreatedBy       string
+	CreatedAt       time.Time
 	ChangeRequestID *string
 }

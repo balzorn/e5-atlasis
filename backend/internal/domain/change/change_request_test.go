@@ -1,6 +1,10 @@
 package change
 
-import "testing"
+import (
+	"testing"
+
+	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
+)
 
 func TestChangeRequestTransitions(t *testing.T) {
 	tests := []struct {
@@ -49,9 +53,9 @@ func TestChangeRequestValidation(t *testing.T) {
 		Changes: []FieldChange{
 			{
 				ID:       "CHG00001",
-				Field:    "owner_id",
-				OldValue: "USR00001",
-				NewValue: "USR00002",
+				Field:    domainasset.FieldOwnerID,
+				OldValue: domainasset.NewStringFieldValue("USR001"),
+				NewValue: domainasset.NewStringFieldValue("USR002"),
 			},
 		},
 	}

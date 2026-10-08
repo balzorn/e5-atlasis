@@ -3,6 +3,8 @@ package change
 import (
 	"fmt"
 	"time"
+
+	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 )
 
 type ID string
@@ -27,9 +29,9 @@ const (
 
 type FieldChange struct {
 	ID       string
-	Field    string
-	OldValue any
-	NewValue any
+	Field    domainasset.FieldName
+	OldValue domainasset.FieldValue
+	NewValue domainasset.FieldValue
 }
 
 type ChangeRequest struct {

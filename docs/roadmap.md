@@ -21,7 +21,7 @@
 
 - [ ] PostgreSQL schema
 - [ ] pgx repositories
-- [ ] Transactions
+- [x] Transaction boundary design
 - [ ] REST API
 - [ ] RFC 9457 error responses
 - [ ] Authentication / OIDC

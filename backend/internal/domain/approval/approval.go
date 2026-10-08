@@ -33,6 +33,46 @@ type Approval struct {
 	Comment         string
 }
 
+func (a *Approval) Approve(decidedBy string, comment string, decidedAt time.Time) error {
+	if a.Status != StatusPending {
+		return fmt.Errorf("approval %q is not pending", a.ID)
+	}
+
+	if decidedBy == "" {
+		return fmt.Errorf("decided by is required")
+	}
+
+	if a.ApproverID != decidedBy {
+		return fmt.Errorf("user %q is not assigned as approver", decidedBy)
+	}
+
+	a.Status = StatusApproved
+	a.DecidedAt = &decidedAt
+	a.Comment = comment
+
+	return nil
+}
+
+func (a *Approval) Reject(decidedBy string, comment string, decidedAt time.Time) error {
+	if a.Status != StatusPending {
+		return fmt.Errorf("approval %q is not pending", a.ID)
+	}
+
+	if decidedBy == "" {
+		return fmt.Errorf("decided by is required")
+	}
+
+	if a.ApproverID != decidedBy {
+		return fmt.Errorf("user %q is not assigned as approver", decidedBy)
+	}
+
+	a.Status = StatusRejected
+	a.DecidedAt = &decidedAt
+	a.Comment = comment
+
+	return nil
+}
+
 func (a Approval) Validate() error {
 	if a.ID == "" {
 		return fmt.Errorf("approval ID is required")

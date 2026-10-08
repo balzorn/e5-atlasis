@@ -88,8 +88,8 @@ func TestCreateChangeRequest(t *testing.T) {
 		Title:       "Change owner",
 		Changes: []ChangeProposal{
 			{
-				Field:    "owner_id",
-				NewValue: "USR003",
+				Field:    domainasset.FieldOwnerID,
+				NewValue: domainasset.NewStringFieldValue("USR003"),
 			},
 		},
 	})
@@ -106,11 +106,21 @@ func TestCreateChangeRequest(t *testing.T) {
 		t.Fatalf("Status = %s, want DRAFT", cr.Status)
 	}
 
-	if got := cr.Changes[0].OldValue; got != "USR001" {
+	got, err := cr.Changes[0].OldValue.StringValue()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got != "USR001" {
 		t.Fatalf("OldValue = %v, want USR001", got)
 	}
 
-	if got := cr.Changes[0].NewValue; got != "USR003" {
+	got, err = cr.Changes[0].NewValue.StringValue()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got != "USR003" {
 		t.Fatalf("NewValue = %v, want USR003", got)
 	}
 }
@@ -139,8 +149,10 @@ func TestCreateChangeRequestRejectsDuplicateFields(t *testing.T) {
 		Initiator:   "USR002",
 		Title:       "Duplicate owner",
 		Changes: []ChangeProposal{
-			{Field: "owner_id", NewValue: "USR003"},
-			{Field: "owner_id", NewValue: "USR004"},
+			{Field: domainasset.FieldOwnerID,
+				NewValue: domainasset.NewStringFieldValue("USR003")},
+			{Field: domainasset.FieldOwnerID,
+				NewValue: domainasset.NewStringFieldValue("USR004")},
 		},
 	})
 
@@ -172,8 +184,10 @@ func TestCreateChangeRequestRejectsNoOpChange(t *testing.T) {
 		BaseVersion: 3,
 		Initiator:   "USR002",
 		Title:       "No-op change",
-		Changes: []ChangeProposal{
-			{Field: "owner_id", NewValue: "USR001"},
+		Changes: []ChangeProposal{{
+			Field:    domainasset.FieldOwnerID,
+			NewValue: domainasset.NewStringFieldValue("USR001"),
+		},
 		},
 	})
 
@@ -195,9 +209,9 @@ func TestSubmitChangeRequest(t *testing.T) {
 			Changes: []domainchange.FieldChange{
 				{
 					ID:       "CHG00001",
-					Field:    "owner_id",
-					OldValue: "USR001",
-					NewValue: "USR002",
+					Field:    domainasset.FieldOwnerID,
+					OldValue: domainasset.NewStringFieldValue("USR001"),
+					NewValue: domainasset.NewStringFieldValue("USR002"),
 				},
 			},
 			CreatedAt: now,
@@ -235,9 +249,9 @@ func TestSubmitChangeRequestRejectsInvalidTransition(t *testing.T) {
 			Changes: []domainchange.FieldChange{
 				{
 					ID:       "CHG00001",
-					Field:    "owner_id",
-					OldValue: "USR001",
-					NewValue: "USR002",
+					Field:    domainasset.FieldOwnerID,
+					OldValue: domainasset.NewStringFieldValue("USR001"),
+					NewValue: domainasset.NewStringFieldValue("USR002"),
 				},
 			},
 		},

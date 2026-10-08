@@ -133,3 +133,15 @@ go mod verify
 govulncheck ./...
 
 Use golangci-lint/gosec when the project tooling is configured.
+
+## Change Request application
+
+Applying a Change Request is an atomic persistence operation.
+
+The following state changes must be committed together:
+- Change Request status
+- current Information Asset version
+- new immutable AssetVersion
+- Change Request -> AssetVersion linkage
+
+Infrastructure owns the database transaction boundary.

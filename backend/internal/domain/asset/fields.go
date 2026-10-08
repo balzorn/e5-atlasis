@@ -44,35 +44,35 @@ func ParseFieldName(value string) (FieldName, error) {
 	}
 }
 
-func (a InformationAsset) FieldValue(field FieldName) (any, error) {
+func (a InformationAsset) FieldValue(field FieldName) (FieldValue, error) {
 	switch field {
 	case FieldType:
-		return a.Type, nil
+		return NewStringFieldValue(string(a.Type)), nil
 	case FieldNameField:
-		return a.Name, nil
+		return NewStringFieldValue(a.Name), nil
 	case FieldShortName:
-		return a.ShortName, nil
+		return NewStringFieldValue(a.ShortName), nil
 	case FieldStatus:
-		return a.Status, nil
+		return NewStringFieldValue(string(a.Status)), nil
 	case FieldOrganizationID:
-		return a.OrganizationID, nil
+		return NewStringFieldValue(a.OrganizationID), nil
 	case FieldOwnerID:
-		return a.OwnerID, nil
+		return NewStringFieldValue(a.OwnerID), nil
 	case FieldPurpose:
-		return a.Purpose, nil
+		return NewStringFieldValue(a.Purpose), nil
 	case FieldCriticality:
-		return a.Criticality, nil
+		return NewStringFieldValue(string(a.Criticality)), nil
 	case FieldRiskLevel:
-		return a.RiskLevel, nil
+		return NewStringFieldValue(string(a.RiskLevel)), nil
 	case FieldProtectionRequired:
-		return a.Security.ProtectionRequired, nil
+		return NewBoolFieldValue(a.Security.ProtectionRequired), nil
 	case FieldProtectionStatus:
-		return a.Security.ProtectionStatus, nil
+		return NewStringFieldValue(string(a.Security.ProtectionStatus)), nil
 	case FieldAttestationStatus:
-		return a.Security.AttestationStatus, nil
+		return NewStringFieldValue(string(a.Security.AttestationStatus)), nil
 	case FieldCyberCenterRequired:
-		return a.Security.CyberCenterRequired, nil
+		return NewBoolFieldValue(a.Security.CyberCenterRequired), nil
 	default:
-		return nil, fmt.Errorf("unknown field %q", field)
+		return FieldValue{}, fmt.Errorf("unknown field %q", field)
 	}
 }

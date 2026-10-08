@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 )
 
@@ -20,9 +21,9 @@ func newReviewTestRepository(
 			Changes: []domainchange.FieldChange{
 				{
 					ID:       "CHG00001",
-					Field:    "owner_id",
-					OldValue: "USR001",
-					NewValue: "USR002",
+					Field:    domainasset.FieldOwnerID,
+					OldValue: domainasset.NewStringFieldValue("USR001"),
+					NewValue: domainasset.NewStringFieldValue("USR002"),
 				},
 			},
 		},
