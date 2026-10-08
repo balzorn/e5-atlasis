@@ -64,11 +64,26 @@ func (uc *CreateChangeRequestUseCase) Execute(
 	}
 
 	changes := make([]domainchange.FieldChange, 0, len(cmd.Changes))
+	seenFields := make(map[string]struct{}, len(cmd.Changes))
 
 	for i, proposal := range cmd.Changes {
-		oldValue, err := currentFieldValue(*current, proposal.Field)
+		field, err := domainasset.ParseFieldName(proposal.Field)
 		if err != nil {
 			return nil, err
+		}
+
+		if _, exists := seenFields[proposal.Field]; exists {
+			return nil, fmt.Errorf("field %q appears more than once", proposal.Field)
+		}
+		seenFields[proposal.Field] = struct{}{}
+
+		oldValue, err := current.FieldValue(field)
+		if err != nil {
+			return nil, err
+		}
+
+		if oldValue == proposal.NewValue {
+			return nil, fmt.Errorf("field %q has no actual change", proposal.Field)
 		}
 
 		changes = append(changes, domainchange.FieldChange{
@@ -99,37 +114,4 @@ func (uc *CreateChangeRequestUseCase) Execute(
 	}
 
 	return &cr, nil
-}
-
-func currentFieldValue(a domainasset.InformationAsset, field string) (any, error) {
-	switch field {
-	case "type":
-		return a.Type, nil
-	case "name":
-		return a.Name, nil
-	case "short_name":
-		return a.ShortName, nil
-	case "status":
-		return a.Status, nil
-	case "organization_id":
-		return a.OrganizationID, nil
-	case "owner_id":
-		return a.OwnerID, nil
-	case "purpose":
-		return a.Purpose, nil
-	case "criticality":
-		return a.Criticality, nil
-	case "risk_level":
-		return a.RiskLevel, nil
-	case "protection_required":
-		return a.Security.ProtectionRequired, nil
-	case "protection_status":
-		return a.Security.ProtectionStatus, nil
-	case "attestation_status":
-		return a.Security.AttestationStatus, nil
-	case "cyber_center_required":
-		return a.Security.CyberCenterRequired, nil
-	default:
-		return nil, fmt.Errorf("field %q cannot be changed through a change request", field)
-	}
 }

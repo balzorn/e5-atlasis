@@ -113,3 +113,70 @@ func TestCreateChangeRequest(t *testing.T) {
 		t.Fatalf("NewValue = %v, want USR003", got)
 	}
 }
+
+func TestCreateChangeRequestRejectsDuplicateFields(t *testing.T) {
+	assetID, _ := domainasset.ParseAssetID("IA00001")
+
+	uc := NewCreateChangeRequestUseCase(
+		fakeAssetRepository{
+			asset: domainasset.InformationAsset{
+				ID:             assetID,
+				Type:           domainasset.AssetTypeInformationSystem,
+				Name:           "Test System",
+				OrganizationID: "ORG001",
+				OwnerID:        "USR001",
+				CurrentVersion: 3,
+			},
+		},
+		&fakeChangeRequestRepository{},
+		fakeChangeRequestIDGenerator{},
+	)
+
+	_, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
+		AssetID:     assetID,
+		BaseVersion: 3,
+		Initiator:   "USR002",
+		Title:       "Duplicate owner",
+		Changes: []ChangeProposal{
+			{Field: "owner_id", NewValue: "USR003"},
+			{Field: "owner_id", NewValue: "USR004"},
+		},
+	})
+
+	if err == nil {
+		t.Fatal("Execute() error = nil, want duplicate field error")
+	}
+}
+
+func TestCreateChangeRequestRejectsNoOpChange(t *testing.T) {
+	assetID, _ := domainasset.ParseAssetID("IA00001")
+
+	uc := NewCreateChangeRequestUseCase(
+		fakeAssetRepository{
+			asset: domainasset.InformationAsset{
+				ID:             assetID,
+				Type:           domainasset.AssetTypeInformationSystem,
+				Name:           "Test System",
+				OrganizationID: "ORG001",
+				OwnerID:        "USR001",
+				CurrentVersion: 3,
+			},
+		},
+		&fakeChangeRequestRepository{},
+		fakeChangeRequestIDGenerator{},
+	)
+
+	_, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
+		AssetID:     assetID,
+		BaseVersion: 3,
+		Initiator:   "USR002",
+		Title:       "No-op change",
+		Changes: []ChangeProposal{
+			{Field: "owner_id", NewValue: "USR001"},
+		},
+	})
+
+	if err == nil {
+		t.Fatal("Execute() error = nil, want no-op change error")
+	}
+}
