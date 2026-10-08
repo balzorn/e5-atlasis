@@ -75,7 +75,6 @@ func (r *ApprovalRepository) GetByID(
 			comment
 		FROM approvals
 		WHERE id = $1
-		  AND status = 'PENDING'
 		`,
 		string(id),
 	).Scan(
@@ -166,6 +165,7 @@ func (r *ApprovalRepository) Save(
 			decided_at = $3,
 			comment = $4
 		WHERE id = $1
+		  AND status = 'PENDING'
 		`,
 		string(a.ID),
 		a.Status,
@@ -177,7 +177,7 @@ func (r *ApprovalRepository) Save(
 	}
 
 	if result.RowsAffected() != 1 {
-		return fmt.Errorf("approval %q not found", a.ID)
+		return fmt.Errorf("approval %q is not pending or not found", a.ID)
 	}
 
 	return nil
