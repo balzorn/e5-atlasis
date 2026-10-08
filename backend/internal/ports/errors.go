@@ -2,4 +2,7 @@ package ports
 
 import "errors"
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound     = errors.New("not found")
+	ErrInvalidInput = errors.New("invalid input")
+)
