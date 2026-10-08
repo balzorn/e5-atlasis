@@ -10,7 +10,7 @@
 - [x] Approval model
 - [x] Change Request creation
 - [x] Change Request submission
-- [ ] Review workflow
+- [x] Review workflow
 - [ ] Request changes
 - [ ] Reject Change Request
 - [ ] Approvals
