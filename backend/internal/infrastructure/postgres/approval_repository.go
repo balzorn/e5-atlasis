@@ -75,6 +75,7 @@ func (r *ApprovalRepository) GetByID(
 			comment
 		FROM approvals
 		WHERE id = $1
+		  AND status = 'PENDING'
 		`,
 		string(id),
 	).Scan(
