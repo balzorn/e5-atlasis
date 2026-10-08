@@ -37,9 +37,7 @@ func TestPostgreSQLAssetIDGenerator(t *testing.T) {
 		t.Fatalf("generated IDs must be unique: %q", first)
 	}
 
-	wantNext := first
 	if second <= first {
 		t.Fatalf("generated IDs are not monotonic: first=%q second=%q", first, second)
 	}
-	_ = wantNext
 }
