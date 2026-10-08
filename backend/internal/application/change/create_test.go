@@ -52,6 +52,7 @@ func (r *fakeChangeRequestRepository) GetByID(
 func (r *fakeChangeRequestRepository) Save(
 	_ context.Context,
 	cr domainchange.ChangeRequest,
+	_ domainchange.Status,
 ) error {
 	r.created = &cr
 	return nil

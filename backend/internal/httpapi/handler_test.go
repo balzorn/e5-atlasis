@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
 	applicationasset "github.com/balzorn/e5-atlasis/backend/internal/application/asset"
 	applicationchange "github.com/balzorn/e5-atlasis/backend/internal/application/change"
+	domainapproval "github.com/balzorn/e5-atlasis/backend/internal/domain/approval"
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
@@ -84,12 +86,70 @@ func (r *fakeChangeRequestRepository) GetByID(
 func (r *fakeChangeRequestRepository) Save(
 	_ context.Context,
 	_ domainchange.ChangeRequest,
+	_ domainchange.Status,
 ) error {
 	return nil
 }
 
+type fakeApprovalRepository struct {
+	approvals []domainapproval.Approval
+}
+
+func (r *fakeApprovalRepository) Create(
+	_ context.Context,
+	a domainapproval.Approval,
+) error {
+	r.approvals = append(r.approvals, a)
+	return nil
+}
+
+func (r *fakeApprovalRepository) GetByID(
+	_ context.Context,
+	id domainapproval.ID,
+) (*domainapproval.Approval, error) {
+	for _, a := range r.approvals {
+		if a.ID == id {
+			copy := a
+			return &copy, nil
+		}
+	}
+	return nil, ports.ErrNotFound
+}
+
+func (r *fakeApprovalRepository) ListByChangeRequestID(
+	_ context.Context,
+	changeRequestID string,
+) ([]domainapproval.Approval, error) {
+	result := make([]domainapproval.Approval, 0)
+	for _, a := range r.approvals {
+		if a.ChangeRequestID == changeRequestID {
+			result = append(result, a)
+		}
+	}
+	return result, nil
+}
+
+func (r *fakeApprovalRepository) Save(
+	_ context.Context,
+	a domainapproval.Approval,
+) error {
+	for i := range r.approvals {
+		if r.approvals[i].ID == a.ID {
+			r.approvals[i] = a
+			return nil
+		}
+	}
+	return ports.ErrNotFound
+}
+
+type fakeApprovalIDGenerator struct{}
+
+func (fakeApprovalIDGenerator) Next(context.Context) (domainapproval.ID, error) {
+	return domainapproval.ParseApprovalID("APR00003")
+}
+
 func newTestHandler() *Handler {
-	repo := &fakeAssetRepository{
+	assetRepo := &fakeAssetRepository{
 		asset: &domainasset.InformationAsset{
 			ID:             "IA00001",
 			Type:           domainasset.AssetTypeInformationSystem,
@@ -110,25 +170,56 @@ func newTestHandler() *Handler {
 			CurrentVersion: 1,
 		},
 	}
+	changeRepo := &fakeChangeRequestRepository{
+		changeRequest: &domainchange.ChangeRequest{
+			ID:          "CR00001",
+			AssetID:     "IA00001",
+			BaseVersion: 1,
+			Status:      domainchange.StatusUnderReview,
+			Initiator:   "USR001",
+			Title:       "Test change",
+			Changes: []domainchange.FieldChange{
+				{
+					ID:       "CHG00001",
+					Field:    domainasset.FieldOwnerID,
+					OldValue: domainasset.NewStringFieldValue("USR001"),
+					NewValue: domainasset.NewStringFieldValue("USR002"),
+				},
+			},
+		},
+	}
+	approvalRepo := &fakeApprovalRepository{
+		approvals: []domainapproval.Approval{
+			{
+				ID:              "APR00001",
+				ChangeRequestID: "CR00001",
+				Type:            domainapproval.TypeSecurity,
+				Status:          domainapproval.StatusApproved,
+				Required:        true,
+				ApproverID:      "USR002",
+			},
+		},
+	}
 
 	return NewHandler(
-		applicationasset.NewGetAssetUseCase(repo),
-		applicationchange.NewGetChangeRequestUseCase(&fakeChangeRequestRepository{
-			changeRequest: &domainchange.ChangeRequest{
-				ID:          "CR00001",
-				AssetID:     "IA00001",
-				BaseVersion: 1,
-				Status:      domainchange.StatusUnderReview,
-				Initiator:   "USR001",
-				Title:       "Test change",
-			},
-		}),
-		applicationasset.NewCreateAssetUseCase(repo, fakeAssetIDGenerator{}),
+		applicationasset.NewGetAssetUseCase(assetRepo),
+		applicationchange.NewGetChangeRequestUseCase(changeRepo),
+		applicationasset.NewCreateAssetUseCase(assetRepo, fakeAssetIDGenerator{}),
 		applicationchange.NewCreateChangeRequestUseCase(
-			repo,
-			&fakeChangeRequestRepository{},
+			assetRepo,
+			changeRepo,
 			fakeChangeRequestIDGenerator{},
 		),
+		applicationchange.NewSubmitChangeRequestUseCase(changeRepo),
+		applicationchange.NewStartReviewUseCase(changeRepo),
+		applicationchange.NewRequestChangesUseCase(changeRepo),
+		applicationchange.NewRejectChangeRequestUseCase(changeRepo),
+		applicationchange.NewApproveChangeRequestUseCase(changeRepo, approvalRepo),
+		applicationchange.NewApplyChangeRequestUseCase(assetRepo, changeRepo, nil),
+		applicationapproval.NewCreateApprovalUseCase(changeRepo, approvalRepo, fakeApprovalIDGenerator{}),
+		applicationapproval.NewListApprovalsUseCase(changeRepo, approvalRepo),
+		applicationapproval.NewApproveApprovalUseCase(approvalRepo),
+		applicationapproval.NewRejectApprovalUseCase(approvalRepo),
 	)
 }
 
@@ -355,15 +446,28 @@ func TestGetAssetByIDRejectsInvalidID(t *testing.T) {
 
 func TestGetAssetByIDReturnsNotFound(t *testing.T) {
 	repo := &fakeAssetRepository{}
+	changeRepo := &fakeChangeRequestRepository{}
+	approvalRepo := &fakeApprovalRepository{}
+
 	handler := NewHandler(
 		applicationasset.NewGetAssetUseCase(repo),
-		applicationchange.NewGetChangeRequestUseCase(&fakeChangeRequestRepository{}),
+		applicationchange.NewGetChangeRequestUseCase(changeRepo),
 		applicationasset.NewCreateAssetUseCase(repo, fakeAssetIDGenerator{}),
 		applicationchange.NewCreateChangeRequestUseCase(
 			repo,
-			&fakeChangeRequestRepository{},
+			changeRepo,
 			fakeChangeRequestIDGenerator{},
 		),
+		applicationchange.NewSubmitChangeRequestUseCase(changeRepo),
+		applicationchange.NewStartReviewUseCase(changeRepo),
+		applicationchange.NewRequestChangesUseCase(changeRepo),
+		applicationchange.NewRejectChangeRequestUseCase(changeRepo),
+		applicationchange.NewApproveChangeRequestUseCase(changeRepo, approvalRepo),
+		applicationchange.NewApplyChangeRequestUseCase(repo, changeRepo, nil),
+		applicationapproval.NewCreateApprovalUseCase(changeRepo, approvalRepo, fakeApprovalIDGenerator{}),
+		applicationapproval.NewListApprovalsUseCase(changeRepo, approvalRepo),
+		applicationapproval.NewApproveApprovalUseCase(approvalRepo),
+		applicationapproval.NewRejectApprovalUseCase(approvalRepo),
 	)
 
 	rec := httptest.NewRecorder()

@@ -80,7 +80,13 @@ func decide(
 	}
 
 	if err != nil {
-		return nil, err
+		if a.Status != domainapproval.StatusPending {
+			return nil, fmt.Errorf("%w: approval %q is no longer pending", ports.ErrConflict, a.ID)
+		}
+		if a.ApproverID != cmd.DecidedBy {
+			return nil, fmt.Errorf("%w: user %q is not assigned as approver", ports.ErrForbidden, cmd.DecidedBy)
+		}
+		return nil, fmt.Errorf("%w: invalid approval decision", ports.ErrInvalidInput)
 	}
 
 	if err := repository.Save(ctx, *a); err != nil {

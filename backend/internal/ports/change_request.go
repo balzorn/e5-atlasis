@@ -9,5 +9,5 @@ import (
 type ChangeRequestRepository interface {
 	Create(ctx context.Context, cr change.ChangeRequest) error
 	GetByID(ctx context.Context, id change.ID) (*change.ChangeRequest, error)
-	Save(ctx context.Context, cr change.ChangeRequest) error
+	Save(ctx context.Context, cr change.ChangeRequest, expectedStatus change.Status) error
 }

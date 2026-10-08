@@ -16,16 +16,28 @@ type SubmitChangeRequestUseCase struct {
 func NewSubmitChangeRequestUseCase(
 	changeRequests ports.ChangeRequestRepository,
 ) *SubmitChangeRequestUseCase {
-	return &SubmitChangeRequestUseCase{
-		changeRequests: changeRequests,
-	}
+	return &SubmitChangeRequestUseCase{changeRequests: changeRequests}
 }
 
 func (uc *SubmitChangeRequestUseCase) Execute(
 	ctx context.Context,
 	id domainchange.ID,
 ) (*domainchange.ChangeRequest, error) {
-	cr, err := uc.changeRequests.GetByID(ctx, id)
+	return transitionChangeRequest(
+		ctx,
+		uc.changeRequests,
+		id,
+		domainchange.StatusSubmitted,
+	)
+}
+
+func transitionChangeRequest(
+	ctx context.Context,
+	repository ports.ChangeRequestRepository,
+	id domainchange.ID,
+	target domainchange.Status,
+) (*domainchange.ChangeRequest, error) {
+	cr, err := repository.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -34,13 +46,14 @@ func (uc *SubmitChangeRequestUseCase) Execute(
 		return nil, fmt.Errorf("change request %q not found", id)
 	}
 
-	if err := cr.TransitionTo(domainchange.StatusSubmitted); err != nil {
-		return nil, err
+	expectedStatus := cr.Status
+	if err := cr.TransitionTo(target); err != nil {
+		return nil, fmt.Errorf("%w: %v", ports.ErrConflict, err)
 	}
 
 	cr.UpdatedAt = time.Now().UTC()
 
-	if err := uc.changeRequests.Save(ctx, *cr); err != nil {
+	if err := repository.Save(ctx, *cr, expectedStatus); err != nil {
 		return nil, err
 	}
 

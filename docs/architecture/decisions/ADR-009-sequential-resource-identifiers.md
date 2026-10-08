@@ -6,7 +6,7 @@ Accepted
 
 ## Decision
 
-Information Asset identifiers (`IAxxxxx`) and Change Request identifiers (`CRxxxxx`) are allocated by PostgreSQL sequences.
+Information Asset identifiers (`IAxxxxx`), Change Request identifiers (`CRxxxxx`), and Approval identifiers (`APRxxxxx`) are allocated by PostgreSQL sequences.
 
 The application layer depends on identifier-generator ports and does not calculate the next identifier itself.
 
@@ -14,6 +14,7 @@ The supported identifier ranges are:
 
 - Information Assets: `IA00001` through `IA99999`
 - Change Requests: `CR00001` through `CR99999`
+- Approvals: `APR00001` through `APR99999`
 
 Identifiers are unique and monotonically increasing within the sequence. They are **not guaranteed to be gapless**.
 
@@ -37,7 +38,7 @@ Gapless allocation would require additional transactional serialization and woul
 
 ## Consequences
 
-Clients must never supply `IAxxxxx` or `CRxxxxx` identifiers for creation.
+Clients must never supply `IAxxxxx`, `CRxxxxx`, or `APRxxxxx` identifiers for creation.
 
 The API returns the generated identifier after successful creation.
 

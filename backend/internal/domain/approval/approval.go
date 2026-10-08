@@ -74,8 +74,8 @@ func (a *Approval) Reject(decidedBy string, comment string, decidedAt time.Time)
 }
 
 func (a Approval) Validate() error {
-	if a.ID == "" {
-		return fmt.Errorf("approval ID is required")
+	if _, err := ParseApprovalID(a.ID.String()); err != nil {
+		return err
 	}
 
 	if a.ChangeRequestID == "" {

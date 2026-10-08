@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
 	applicationasset "github.com/balzorn/e5-atlasis/backend/internal/application/asset"
 	applicationchange "github.com/balzorn/e5-atlasis/backend/internal/application/change"
 	"github.com/balzorn/e5-atlasis/backend/internal/httpapi"
@@ -36,6 +37,9 @@ func main() {
 	changeRequestRepository := postgres.NewChangeRequestRepository(db)
 	assetIDGenerator := postgres.NewAssetIDGenerator(db)
 	changeRequestIDGenerator := postgres.NewChangeRequestIDGenerator(db)
+	approvalRepository := postgres.NewApprovalRepository(db)
+	approvalIDGenerator := postgres.NewApprovalIDGenerator(db)
+	changeApplier := postgres.NewChangeApplier(db)
 
 	getAsset := applicationasset.NewGetAssetUseCase(assetRepository)
 	createAsset := applicationasset.NewCreateAssetUseCase(assetRepository, assetIDGenerator)
@@ -45,12 +49,43 @@ func main() {
 		changeRequestRepository,
 		changeRequestIDGenerator,
 	)
+	submitChange := applicationchange.NewSubmitChangeRequestUseCase(changeRequestRepository)
+	startReview := applicationchange.NewStartReviewUseCase(changeRequestRepository)
+	requestChanges := applicationchange.NewRequestChangesUseCase(changeRequestRepository)
+	rejectChange := applicationchange.NewRejectChangeRequestUseCase(changeRequestRepository)
+	approveChange := applicationchange.NewApproveChangeRequestUseCase(changeRequestRepository, approvalRepository)
+	applyChange := applicationchange.NewApplyChangeRequestUseCase(
+		assetRepository,
+		changeRequestRepository,
+		changeApplier,
+	)
+	createApproval := applicationapproval.NewCreateApprovalUseCase(
+		changeRequestRepository,
+		approvalRepository,
+		approvalIDGenerator,
+	)
+	listApprovals := applicationapproval.NewListApprovalsUseCase(
+		changeRequestRepository,
+		approvalRepository,
+	)
+	approveApproval := applicationapproval.NewApproveApprovalUseCase(approvalRepository)
+	rejectApproval := applicationapproval.NewRejectApprovalUseCase(approvalRepository)
 
 	handler := httpapi.NewHandler(
 		getAsset,
 		getChangeRequest,
 		createAsset,
 		createChangeRequest,
+		submitChange,
+		startReview,
+		requestChanges,
+		rejectChange,
+		approveChange,
+		applyChange,
+		createApproval,
+		listApprovals,
+		approveApproval,
+		rejectApproval,
 	)
 
 	addr := os.Getenv("HTTP_ADDR")

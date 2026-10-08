@@ -11,6 +11,8 @@ import (
 
 	applicationasset "github.com/balzorn/e5-atlasis/backend/internal/application/asset"
 	applicationchange "github.com/balzorn/e5-atlasis/backend/internal/application/change"
+	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
+	domainapproval "github.com/balzorn/e5-atlasis/backend/internal/domain/approval"
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
@@ -27,6 +29,16 @@ type Handler struct {
 	getChangeRequest *applicationchange.GetChangeRequestUseCase
 	createAsset      *applicationasset.CreateAssetUseCase
 	createChange     *applicationchange.CreateChangeRequestUseCase
+	submitChange     *applicationchange.SubmitChangeRequestUseCase
+	startReview      *applicationchange.StartReviewUseCase
+	requestChanges   *applicationchange.RequestChangesUseCase
+	rejectChange     *applicationchange.RejectChangeRequestUseCase
+	approveChange    *applicationchange.ApproveChangeRequestUseCase
+	applyChange      *applicationchange.ApplyChangeRequestUseCase
+	createApproval   *applicationapproval.CreateApprovalUseCase
+	listApprovals    *applicationapproval.ListApprovalsUseCase
+	approveApproval  *applicationapproval.ApproveApprovalUseCase
+	rejectApproval   *applicationapproval.RejectApprovalUseCase
 }
 
 func NewHandler(
@@ -34,12 +46,32 @@ func NewHandler(
 	getChangeRequest *applicationchange.GetChangeRequestUseCase,
 	createAsset *applicationasset.CreateAssetUseCase,
 	createChange *applicationchange.CreateChangeRequestUseCase,
+	submitChange *applicationchange.SubmitChangeRequestUseCase,
+	startReview *applicationchange.StartReviewUseCase,
+	requestChanges *applicationchange.RequestChangesUseCase,
+	rejectChange *applicationchange.RejectChangeRequestUseCase,
+	approveChange *applicationchange.ApproveChangeRequestUseCase,
+	applyChange *applicationchange.ApplyChangeRequestUseCase,
+	createApproval *applicationapproval.CreateApprovalUseCase,
+	listApprovals *applicationapproval.ListApprovalsUseCase,
+	approveApproval *applicationapproval.ApproveApprovalUseCase,
+	rejectApproval *applicationapproval.RejectApprovalUseCase,
 ) *Handler {
 	return &Handler{
 		getAsset:         getAsset,
 		getChangeRequest: getChangeRequest,
 		createAsset:      createAsset,
 		createChange:     createChange,
+		submitChange:     submitChange,
+		startReview:      startReview,
+		requestChanges:   requestChanges,
+		rejectChange:     rejectChange,
+		approveChange:    approveChange,
+		applyChange:      applyChange,
+		createApproval:   createApproval,
+		listApprovals:    listApprovals,
+		approveApproval:  approveApproval,
+		rejectApproval:   rejectApproval,
 	}
 }
 
@@ -51,6 +83,16 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/assets/{assetID}", h.getAssetByID)
 	mux.HandleFunc("POST /api/v1/change-requests", h.createChangeRequestHandler)
 	mux.HandleFunc("GET /api/v1/change-requests/{changeRequestID}", h.getChangeRequestByID)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/submit", h.submitChangeRequestHandler)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/review", h.startChangeRequestReviewHandler)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/request-changes", h.requestChangesHandler)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/reject", h.rejectChangeRequestHandler)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/approve", h.approveChangeRequestHandler)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/apply", h.applyChangeRequestHandler)
+	mux.HandleFunc("GET /api/v1/change-requests/{changeRequestID}/approvals", h.listApprovalsHandler)
+	mux.HandleFunc("POST /api/v1/change-requests/{changeRequestID}/approvals", h.createApprovalHandler)
+	mux.HandleFunc("POST /api/v1/approvals/{approvalID}/approve", h.approveApprovalHandler)
+	mux.HandleFunc("POST /api/v1/approvals/{approvalID}/reject", h.rejectApprovalHandler)
 
 	return mux
 }
@@ -250,6 +292,147 @@ func parseChangeRequestFieldValue(value createChangeRequestValue) (domainasset.F
 	}
 }
 
+func requireActorID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	actorID := strings.TrimSpace(r.Header.Get("X-Actor-ID"))
+	if actorID == "" || len(actorID) > maxActorIDLength {
+		writeError(w, http.StatusBadRequest, "INVALID_ACTOR_ID", "valid X-Actor-ID header is required")
+		return "", false
+	}
+	return actorID, true
+}
+
+func parseChangeRequestPathID(w http.ResponseWriter, r *http.Request) (domainchange.ID, bool) {
+	id, err := domainchange.ParseChangeRequestID(strings.TrimSpace(r.PathValue("changeRequestID")))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_CHANGE_REQUEST_ID", "invalid change request ID")
+		return "", false
+	}
+	return id, true
+}
+
+func parseApprovalPathID(w http.ResponseWriter, r *http.Request) (domainapproval.ID, bool) {
+	id, err := domainapproval.ParseApprovalID(strings.TrimSpace(r.PathValue("approvalID")))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_APPROVAL_ID", "invalid approval ID")
+		return "", false
+	}
+	return id, true
+}
+
+func writeChangeRequestResult(w http.ResponseWriter, cr *domainchange.ChangeRequest) {
+	writeJSON(w, http.StatusOK, changeRequestResponse(*cr))
+}
+
+func (h *Handler) submitChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	cr, err := h.submitChange.Execute(r.Context(), id)
+	if err != nil { writeApplicationError(w, err); return }
+	writeChangeRequestResult(w, cr)
+}
+
+func (h *Handler) startChangeRequestReviewHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	cr, err := h.startReview.Execute(r.Context(), id)
+	if err != nil { writeApplicationError(w, err); return }
+	writeChangeRequestResult(w, cr)
+}
+
+func (h *Handler) requestChangesHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	cr, err := h.requestChanges.Execute(r.Context(), id)
+	if err != nil { writeApplicationError(w, err); return }
+	writeChangeRequestResult(w, cr)
+}
+
+func (h *Handler) rejectChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	cr, err := h.rejectChange.Execute(r.Context(), id)
+	if err != nil { writeApplicationError(w, err); return }
+	writeChangeRequestResult(w, cr)
+}
+
+func (h *Handler) approveChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	cr, err := h.approveChange.Execute(r.Context(), id)
+	if err != nil { writeApplicationError(w, err); return }
+	writeChangeRequestResult(w, cr)
+}
+
+func (h *Handler) applyChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	id, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	asset, err := h.applyChange.Execute(r.Context(), id)
+	if err != nil { writeApplicationError(w, err); return }
+	writeJSON(w, http.StatusOK, assetResponse(*asset))
+}
+
+type createApprovalRequest struct {
+	Type       domainapproval.Type `json:"type"`
+	Required   bool                `json:"required"`
+	ApproverID string              `json:"approverId"`
+}
+
+func (h *Handler) createApprovalHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	crID, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	var req createApprovalRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		if errors.Is(err, errUnsupportedMediaType) {
+			writeError(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "Content-Type must be application/json")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid JSON request")
+		return
+	}
+	a, err := h.createApproval.Execute(r.Context(), applicationapproval.CreateApprovalCommand{
+		ChangeRequestID: crID, Type: req.Type, Required: req.Required, ApproverID: req.ApproverID,
+	})
+	if err != nil { writeApplicationError(w, err); return }
+	w.Header().Set("Location", "/api/v1/approvals/"+a.ID.String())
+	writeJSON(w, http.StatusCreated, approvalResponse(*a))
+}
+
+func (h *Handler) listApprovalsHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireActorID(w, r); !ok { return }
+	crID, ok := parseChangeRequestPathID(w, r); if !ok { return }
+	approvals, err := h.listApprovals.Execute(r.Context(), crID)
+	if err != nil { writeApplicationError(w, err); return }
+	response := make([]map[string]any, 0, len(approvals))
+	for _, a := range approvals { response = append(response, approvalResponse(a)) }
+	writeJSON(w, http.StatusOK, response)
+}
+
+type approvalDecisionRequest struct {
+	Comment string `json:"comment"`
+}
+
+func (h *Handler) decideApproval(w http.ResponseWriter, r *http.Request, approve bool) {
+	actorID, ok := requireActorID(w, r); if !ok { return }
+	approvalID, ok := parseApprovalPathID(w, r); if !ok { return }
+	var req approvalDecisionRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		if errors.Is(err, errUnsupportedMediaType) {
+			writeError(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "Content-Type must be application/json")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid JSON request")
+		return
+	}
+	cmd := applicationapproval.DecisionCommand{ApprovalID: approvalID, DecidedBy: actorID, Comment: strings.TrimSpace(req.Comment)}
+	var a *domainapproval.Approval
+	var err error
+	if approve { a, err = h.approveApproval.Execute(r.Context(), cmd) } else { a, err = h.rejectApproval.Execute(r.Context(), cmd) }
+	if err != nil { writeApplicationError(w, err); return }
+	writeJSON(w, http.StatusOK, approvalResponse(*a))
+}
+
+func (h *Handler) approveApprovalHandler(w http.ResponseWriter, r *http.Request) { h.decideApproval(w, r, true) }
+func (h *Handler) rejectApprovalHandler(w http.ResponseWriter, r *http.Request) { h.decideApproval(w, r, false) }
 func (h *Handler) getAssetByID(w http.ResponseWriter, r *http.Request) {
 	value := strings.TrimSpace(r.PathValue("assetID"))
 	assetID, err := domainasset.ParseAssetID(value)
@@ -285,6 +468,8 @@ func (h *Handler) getChangeRequestByID(w http.ResponseWriter, r *http.Request) {
 
 func writeApplicationError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, ports.ErrForbidden):
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "operation is not permitted")
 	case errors.Is(err, ports.ErrInvalidInput):
 		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid request")
 	case errors.Is(err, ports.ErrConflict):
@@ -330,6 +515,22 @@ func assetResponse(a domainasset.InformationAsset) map[string]any {
 		},
 		"currentVersion": a.CurrentVersion.Int(),
 	}
+}
+
+func approvalResponse(a domainapproval.Approval) map[string]any {
+	response := map[string]any{
+		"id":              a.ID.String(),
+		"changeRequestId": a.ChangeRequestID,
+		"type":            string(a.Type),
+		"status":          string(a.Status),
+		"required":        a.Required,
+		"approverId":      a.ApproverID,
+		"comment":         a.Comment,
+	}
+	if a.DecidedAt != nil {
+		response["decidedAt"] = a.DecidedAt.UTC().Format(time.RFC3339)
+	}
+	return response
 }
 
 func changeRequestResponse(cr domainchange.ChangeRequest) map[string]any {

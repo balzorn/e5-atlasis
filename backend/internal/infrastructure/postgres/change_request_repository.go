@@ -219,6 +219,7 @@ func (r *ChangeRequestRepository) GetByID(
 func (r *ChangeRequestRepository) Save(
 	ctx context.Context,
 	cr domainchange.ChangeRequest,
+	expectedStatus domainchange.Status,
 ) error {
 	commandTag, err := r.db.pool.Exec(
 		ctx,
@@ -228,10 +229,12 @@ func (r *ChangeRequestRepository) Save(
 			status = $2,
 			updated_at = $3
 		WHERE id = $1
+		  AND status = $4
 		`,
 		cr.ID.String(),
 		cr.Status,
 		cr.UpdatedAt,
+		expectedStatus,
 	)
 	if err != nil {
 		return fmt.Errorf("save change request: %w", err)

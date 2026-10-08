@@ -2,7 +2,10 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 
 	domainapproval "github.com/balzorn/e5-atlasis/backend/internal/domain/approval"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
@@ -88,6 +91,10 @@ func (r *ApprovalRepository) GetByID(
 		&a.Comment,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("approval %q: %w", id, ports.ErrNotFound)
+		}
+
 		return nil, fmt.Errorf("get approval: %w", err)
 	}
 

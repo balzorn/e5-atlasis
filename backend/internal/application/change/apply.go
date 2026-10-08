@@ -43,7 +43,8 @@ func (uc *ApplyChangeRequestUseCase) Execute(
 
 	if cr.Status != domainchange.StatusApproved {
 		return nil, fmt.Errorf(
-			"change request %q must be APPROVED, got %s",
+			"%w: change request %q must be APPROVED, got %s",
+			ports.ErrConflict,
 			id,
 			cr.Status,
 		)
@@ -65,7 +66,8 @@ func (uc *ApplyChangeRequestUseCase) Execute(
 
 	if current.CurrentVersion.Int() != cr.BaseVersion {
 		return nil, fmt.Errorf(
-			"asset version %d does not match change request base version %d",
+			"%w: asset version %d does not match change request base version %d",
+			ports.ErrConflict,
 			current.CurrentVersion.Int(),
 			cr.BaseVersion,
 		)

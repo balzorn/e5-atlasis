@@ -2,12 +2,33 @@ package change
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 )
 
 type ID string
+
+var changeRequestIDPattern = regexp.MustCompile(`^CR[0-9]{5}package change
+
+import (
+	"fmt"
+	"regexp"
+	"time"
+
+	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
+)
+
+)
+
+func ParseChangeRequestID(value string) (ID, error) {
+	if !changeRequestIDPattern.MatchString(value) {
+		return "", fmt.Errorf("invalid change request ID")
+	}
+
+	return ID(value), nil
+}
 
 type Status string
 
@@ -86,8 +107,8 @@ func (c ChangeRequest) CanTransitionTo(target Status) bool {
 }
 
 func (c ChangeRequest) Validate() error {
-	if c.ID == "" {
-		return fmt.Errorf("change request ID is required")
+	if _, err := ParseChangeRequestID(c.ID.String()); err != nil {
+		return err
 	}
 
 	if c.AssetID == "" {
