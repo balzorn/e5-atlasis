@@ -5,9 +5,19 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	"github.com/balzorn/e5-atlasis/backend/internal/ports"
+)
+
+const (
+	maxAssetNameLength       = 500
+	maxAssetShortNameLength  = 255
+	maxAssetOrganizationID   = 128
+	maxAssetOwnerID          = 128
+	maxAssetPurposeLength    = 4000
+	maxAssetCreatedByLength  = 128
 )
 
 type CreateAssetCommand struct {
@@ -60,11 +70,27 @@ func (uc *CreateAssetUseCase) Execute(
 		return nil, fmt.Errorf("%w: %v", ports.ErrInvalidInput, err)
 	}
 
+	for _, item := range []struct {
+		name  string
+		value string
+		max   int
+	}{
+		{"name", a.Name, maxAssetNameLength},
+		{"shortName", a.ShortName, maxAssetShortNameLength},
+		{"organizationId", a.OrganizationID, maxAssetOrganizationID},
+		{"ownerId", a.OwnerID, maxAssetOwnerID},
+		{"purpose", a.Purpose, maxAssetPurposeLength},
+	} {
+		if utf8.RuneCountInString(item.value) > item.max {
+			return nil, fmt.Errorf("%w: %s is too long", ports.ErrInvalidInput, item.name)
+		}
+	}
+
 	createdBy := strings.TrimSpace(cmd.CreatedBy)
 	if createdBy == "" {
 		return nil, fmt.Errorf("%w: creator is required", ports.ErrInvalidInput)
 	}
-	if len(createdBy) > 128 {
+	if utf8.RuneCountInString(createdBy) > maxAssetCreatedByLength {
 		return nil, fmt.Errorf("%w: creator is too long", ports.ErrInvalidInput)
 	}
 
