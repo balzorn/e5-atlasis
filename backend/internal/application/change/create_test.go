@@ -83,7 +83,7 @@ func TestCreateChangeRequest(t *testing.T) {
 			},
 		},
 		repo,
-		&&fakeChangeRequestIDGenerator{},
+		&fakeChangeRequestIDGenerator{},
 	)
 
 	cr, err := uc.Execute(context.Background(), CreateChangeRequestCommand{
