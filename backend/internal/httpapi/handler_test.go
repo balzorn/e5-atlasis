@@ -82,28 +82,30 @@ func (r *fakeChangeRequestRepository) Save(
 }
 
 func newTestHandler() *Handler {
-	return NewHandler(
-		applicationasset.NewGetAssetUseCase(&fakeAssetRepository{
-			asset: &domainasset.InformationAsset{
-				ID:             "IA00001",
-				Type:           domainasset.AssetTypeInformationSystem,
-				Name:           "Test System",
-				ShortName:      "TEST",
-				Status:         domainasset.AssetStatusDraft,
-				OrganizationID: "ORG001",
-				OwnerID:        "USR001",
-				Purpose:        "Test",
-				Criticality:    domainasset.CriticalityMedium,
-				RiskLevel:      domainasset.RiskLevelMedium,
-				Security: domainasset.SecurityProfile{
-					ProtectionRequired:  false,
-					ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
-					AttestationStatus:  domainasset.AttestationStatusNotRequired,
-					CyberCenterRequired: false,
-				},
-				CurrentVersion: 1,
+	repo := &fakeAssetRepository{
+		asset: &domainasset.InformationAsset{
+			ID:             "IA00001",
+			Type:           domainasset.AssetTypeInformationSystem,
+			Name:           "Test System",
+			ShortName:      "TEST",
+			Status:         domainasset.AssetStatusDraft,
+			OrganizationID: "ORG001",
+			OwnerID:        "USR001",
+			Purpose:        "Test",
+			Criticality:    domainasset.CriticalityMedium,
+			RiskLevel:      domainasset.RiskLevelMedium,
+			Security: domainasset.SecurityProfile{
+				ProtectionRequired:  false,
+				ProtectionStatus:   domainasset.ProtectionStatusNotRequired,
+				AttestationStatus:  domainasset.AttestationStatusNotRequired,
+				CyberCenterRequired: false,
 			},
-		}),
+			CurrentVersion: 1,
+		},
+	}
+
+	return NewHandler(
+		applicationasset.NewGetAssetUseCase(repo),
 		applicationchange.NewGetChangeRequestUseCase(&fakeChangeRequestRepository{
 			changeRequest: &domainchange.ChangeRequest{
 				ID:          "CR00001",
@@ -114,6 +116,7 @@ func newTestHandler() *Handler {
 				Title:       "Test change",
 			},
 		}),
+		applicationasset.NewCreateAssetUseCase(repo, fakeAssetIDGenerator{}),
 	)
 }
 
