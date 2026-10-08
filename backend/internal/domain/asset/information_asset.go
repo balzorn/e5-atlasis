@@ -14,6 +14,7 @@ type InformationAsset struct {
 	Criticality    Criticality
 	RiskLevel      RiskLevel
 	Security       SecurityProfile
+	CurrentVersion Version
 }
 
 func (a InformationAsset) Validate() error {
