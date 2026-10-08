@@ -41,6 +41,15 @@ type ChangeRequest struct {
 	UpdatedAt   time.Time
 }
 
+func (c *ChangeRequest) TransitionTo(target Status) error {
+	if !c.CanTransitionTo(target) {
+		return fmt.Errorf("invalid change request transition: %s -> %s", c.Status, target)
+	}
+
+	c.Status = target
+	return nil
+}
+
 func (c ChangeRequest) CanTransitionTo(target Status) bool {
 	switch c.Status {
 	case StatusDraft:

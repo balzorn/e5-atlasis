@@ -3,6 +3,7 @@ package change
 import (
 	"context"
 	"testing"
+	"time"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
@@ -178,5 +179,77 @@ func TestCreateChangeRequestRejectsNoOpChange(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Execute() error = nil, want no-op change error")
+	}
+}
+
+func TestSubmitChangeRequest(t *testing.T) {
+	now := time.Now().UTC()
+
+	repo := &fakeChangeRequestRepository{
+		created: &domainchange.ChangeRequest{
+			ID:        "CR00001",
+			AssetID:   "IA00001",
+			Status:    domainchange.StatusDraft,
+			Initiator: "USR001",
+			Title:     "Change owner",
+			Changes: []domainchange.FieldChange{
+				{
+					ID:       "CHG00001",
+					Field:    "owner_id",
+					OldValue: "USR001",
+					NewValue: "USR002",
+				},
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
+
+	uc := NewSubmitChangeRequestUseCase(repo)
+
+	cr, err := uc.Execute(
+		context.Background(),
+		domainchange.ID("CR00001"),
+	)
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if cr.Status != domainchange.StatusSubmitted {
+		t.Fatalf("Status = %s, want SUBMITTED", cr.Status)
+	}
+
+	if cr.UpdatedAt.IsZero() {
+		t.Fatal("UpdatedAt is zero")
+	}
+}
+
+func TestSubmitChangeRequestRejectsInvalidTransition(t *testing.T) {
+	repo := &fakeChangeRequestRepository{
+		created: &domainchange.ChangeRequest{
+			ID:        "CR00001",
+			AssetID:   "IA00001",
+			Status:    domainchange.StatusApplied,
+			Initiator: "USR001",
+			Title:     "Already applied",
+			Changes: []domainchange.FieldChange{
+				{
+					ID:       "CHG00001",
+					Field:    "owner_id",
+					OldValue: "USR001",
+					NewValue: "USR002",
+				},
+			},
+		},
+	}
+
+	uc := NewSubmitChangeRequestUseCase(repo)
+
+	_, err := uc.Execute(
+		context.Background(),
+		domainchange.ID("CR00001"),
+	)
+	if err == nil {
+		t.Fatal("Execute() error = nil, want transition error")
 	}
 }

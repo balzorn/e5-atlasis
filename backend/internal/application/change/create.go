@@ -3,6 +3,7 @@ package change
 import (
 	"context"
 	"fmt"
+	"time"
 
 	domainasset "github.com/balzorn/e5-atlasis/backend/internal/domain/asset"
 	domainchange "github.com/balzorn/e5-atlasis/backend/internal/domain/change"
@@ -94,6 +95,8 @@ func (uc *CreateChangeRequestUseCase) Execute(
 		})
 	}
 
+	now := time.Now().UTC()
+
 	cr := domainchange.ChangeRequest{
 		ID:          id,
 		AssetID:     cmd.AssetID.String(),
@@ -103,6 +106,8 @@ func (uc *CreateChangeRequestUseCase) Execute(
 		Title:       cmd.Title,
 		Description: cmd.Description,
 		Changes:     changes,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	if err := cr.Validate(); err != nil {
