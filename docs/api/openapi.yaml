@@ -135,6 +135,269 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
+  /change-requests/{changeRequestId}/submit:
+    post:
+      operationId: submitChangeRequest
+      summary: Submit a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Change Request submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}/review:
+    post:
+      operationId: startChangeRequestReview
+      summary: Start Change Request review
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Change Request is under review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}/request-changes:
+    post:
+      operationId: requestChangeRequestChanges
+      summary: Request changes to a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Changes requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}/reject:
+    post:
+      operationId: rejectChangeRequest
+      summary: Reject a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Change Request rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}/approve:
+    post:
+      operationId: approveChangeRequest
+      summary: Approve a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Change Request approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}/apply:
+    post:
+      operationId: applyChangeRequest
+      summary: Apply an approved Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Updated Information Asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformationAsset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /change-requests/{changeRequestId}/approvals:
+    get:
+      operationId: listChangeRequestApprovals
+      summary: List Change Request approvals
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      responses:
+        '200':
+          description: Approval list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Approval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      operationId: createChangeRequestApproval
+      summary: Create an approval for a Change Request
+      parameters:
+        - $ref: '#/components/parameters/ChangeRequestId'
+        - $ref: '#/components/parameters/ActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApprovalRequest'
+      responses:
+        '201':
+          description: Approval created
+          headers:
+            Location:
+              description: URL of the created approval
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /approvals/{approvalId}/approve:
+    post:
+      operationId: approveApproval
+      summary: Approve an approval
+      parameters:
+        - $ref: '#/components/parameters/ApprovalId'
+        - $ref: '#/components/parameters/ActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalDecisionRequest'
+      responses:
+        '200':
+          description: Approval approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /approvals/{approvalId}/reject:
+    post:
+      operationId: rejectApproval
+      summary: Reject an approval
+      parameters:
+        - $ref: '#/components/parameters/ApprovalId'
+        - $ref: '#/components/parameters/ActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalDecisionRequest'
+      responses:
+        '200':
+          description: Approval rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Approval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   parameters:
     ActorId:
@@ -162,8 +425,17 @@ components:
       required: true
       schema:
         type: string
-        minLength: 1
+        pattern: '^CR[0-9]{5}$'
       example: CR00001
+
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^APR[0-9]{5}$'
+      example: APR00001
 
   responses:
     BadRequest:
@@ -182,6 +454,13 @@ components:
 
     Conflict:
       description: Resource version conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Operation is not permitted
       content:
         application/json:
           schema:
@@ -500,3 +779,76 @@ components:
               const: boolean
             value:
               type: boolean
+
+    CreateApprovalRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - required
+        - approverId
+      properties:
+        type:
+          $ref: '#/components/schemas/ApprovalType'
+        required:
+          type: boolean
+        approverId:
+          type: string
+          minLength: 1
+          maxLength: 128
+
+    ApprovalDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment:
+          type: string
+          maxLength: 4000
+
+    Approval:
+      type: object
+      required:
+        - id
+        - changeRequestId
+        - type
+        - status
+        - required
+        - approverId
+        - comment
+      properties:
+        id:
+          type: string
+          pattern: '^APR[0-9]{5}$'
+        changeRequestId:
+          type: string
+          pattern: '^CR[0-9]{5}$'
+        type:
+          $ref: '#/components/schemas/ApprovalType'
+        status:
+          $ref: '#/components/schemas/ApprovalStatus'
+        required:
+          type: boolean
+        approverId:
+          type: string
+        decidedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        comment:
+          type: string
+
+    ApprovalType:
+      type: string
+      enum:
+        - ASSET_OWNER
+        - SECURITY
+        - ORGANIZATION
+        - SYSTEM_OWNER
+
+    ApprovalStatus:
+      type: string
+      enum:
+        - PENDING
+        - APPROVED
+        - REJECTED
