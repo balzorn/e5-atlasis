@@ -15,13 +15,13 @@
 - [ ] Reject Change Request
 - [x] Approvals
 - [ ] Apply Change Request
-- [ ] Immutable AssetVersion persistence
+- [x] Immutable AssetVersion persistence
 
 ## Backend
 
 - [ ] PostgreSQL schema
 - [ ] pgx repositories
-- [x] Transaction boundary design
+- [x] Transaction boundary implementation
 - [ ] REST API
 - [ ] RFC 9457 error responses
 - [ ] Authentication / OIDC
