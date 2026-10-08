@@ -17,25 +17,29 @@ import (
 )
 
 const (
-	maxAssetCreateBodySize = 1 << 20
-	maxActorIDLength       = 128
+	maxRequestBodySize = 1 << 20
+	maxActorIDLength   = 128
+	maxChangeCount     = 100
 )
 
 type Handler struct {
 	getAsset         *applicationasset.GetAssetUseCase
 	getChangeRequest *applicationchange.GetChangeRequestUseCase
 	createAsset      *applicationasset.CreateAssetUseCase
+	createChange     *applicationchange.CreateChangeRequestUseCase
 }
 
 func NewHandler(
 	getAsset *applicationasset.GetAssetUseCase,
 	getChangeRequest *applicationchange.GetChangeRequestUseCase,
 	createAsset *applicationasset.CreateAssetUseCase,
+	createChange *applicationchange.CreateChangeRequestUseCase,
 ) *Handler {
 	return &Handler{
 		getAsset:         getAsset,
 		getChangeRequest: getChangeRequest,
 		createAsset:      createAsset,
+		createChange:     createChange,
 	}
 }
 
@@ -45,6 +49,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", h.healthz)
 	mux.HandleFunc("POST /api/v1/assets", h.createAssetHandler)
 	mux.HandleFunc("GET /api/v1/assets/{assetID}", h.getAssetByID)
+	mux.HandleFunc("POST /api/v1/change-requests", h.createChangeRequestHandler)
 	mux.HandleFunc("GET /api/v1/change-requests/{changeRequestID}", h.getChangeRequestByID)
 
 	return mux
@@ -113,7 +118,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 		return errUnsupportedMediaType
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxAssetCreateBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	defer r.Body.Close()
 
 	decoder := json.NewDecoder(r.Body)
@@ -132,6 +137,118 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 }
 
 var errUnsupportedMediaType = errors.New("unsupported media type")
+
+type createChangeRequestValue struct {
+	Kind  string          `json:"kind"`
+	Value json.RawMessage `json:"value"`
+}
+
+type createChangeRequestChange struct {
+	Field    string                   `json:"field"`
+	NewValue createChangeRequestValue `json:"newValue"`
+}
+
+type createChangeRequestRequest struct {
+	AssetID     string                      `json:"assetId"`
+	BaseVersion int                         `json:"baseVersion"`
+	Title       string                      `json:"title"`
+	Description string                      `json:"description"`
+	Changes     []createChangeRequestChange `json:"changes"`
+}
+
+func (h *Handler) createChangeRequestHandler(w http.ResponseWriter, r *http.Request) {
+	actorID := strings.TrimSpace(r.Header.Get("X-Actor-ID"))
+	if actorID == "" || len(actorID) > maxActorIDLength {
+		writeError(w, http.StatusBadRequest, "INVALID_ACTOR_ID", "valid X-Actor-ID header is required")
+		return
+	}
+
+	var req createChangeRequestRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		if errors.Is(err, errUnsupportedMediaType) {
+			writeError(w, http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "Content-Type must be application/json")
+			return
+		}
+
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid JSON request")
+		return
+	}
+
+	assetID, err := domainasset.ParseAssetID(strings.TrimSpace(req.AssetID))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_ASSET_ID", "invalid asset ID")
+		return
+	}
+
+	if len(req.Changes) > maxChangeCount {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "too many changes")
+		return
+	}
+
+	proposals := make([]applicationchange.ChangeProposal, 0, len(req.Changes))
+	for _, change := range req.Changes {
+		field, err := domainasset.ParseFieldName(strings.TrimSpace(change.Field))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid change field")
+			return
+		}
+
+		value, err := parseChangeRequestFieldValue(change.NewValue)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid change value")
+			return
+		}
+
+		proposals = append(proposals, applicationchange.ChangeProposal{
+			Field:    field,
+			NewValue: value,
+		})
+	}
+
+	cr, err := h.createChange.Execute(r.Context(), applicationchange.CreateChangeRequestCommand{
+		AssetID:     assetID,
+		BaseVersion: req.BaseVersion,
+		Initiator:   actorID,
+		Title:       req.Title,
+		Description: req.Description,
+		Changes:     proposals,
+	})
+	if err != nil {
+		writeApplicationError(w, err)
+		return
+	}
+
+	location := "/api/v1/change-requests/" + cr.ID.String()
+	w.Header().Set("Location", location)
+	writeJSON(w, http.StatusCreated, changeRequestResponse(*cr))
+}
+
+func parseChangeRequestFieldValue(value createChangeRequestValue) (domainasset.FieldValue, error) {
+	switch value.Kind {
+	case string(domainasset.FieldValueKindString):
+		var stringValue string
+		if len(value.Value) == 0 {
+			return domainasset.FieldValue{}, errors.New("string field value is required")
+		}
+		if err := json.Unmarshal(value.Value, &stringValue); err != nil {
+			return domainasset.FieldValue{}, err
+		}
+		return domainasset.NewStringFieldValue(stringValue), nil
+
+	case string(domainasset.FieldValueKindBoolean):
+		var boolValue bool
+		if len(value.Value) == 0 {
+			return domainasset.FieldValue{}, errors.New("boolean field value is required")
+		}
+		if err := json.Unmarshal(value.Value, &boolValue); err != nil {
+			return domainasset.FieldValue{}, err
+		}
+		return domainasset.NewBoolFieldValue(boolValue), nil
+
+	default:
+		return domainasset.FieldValue{}, errors.New("unknown field value kind")
+	}
+}
 
 func (h *Handler) getAssetByID(w http.ResponseWriter, r *http.Request) {
 	value := strings.TrimSpace(r.PathValue("assetID"))
@@ -169,7 +286,9 @@ func (h *Handler) getChangeRequestByID(w http.ResponseWriter, r *http.Request) {
 func writeApplicationError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ports.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "INVALID_ASSET", "invalid asset data")
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid request")
+	case errors.Is(err, ports.ErrConflict):
+		writeError(w, http.StatusConflict, "VERSION_CONFLICT", "resource version conflict")
 	case errors.Is(err, ports.ErrNotFound):
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "resource not found")
 	default:
