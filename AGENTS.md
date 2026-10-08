@@ -46,3 +46,11 @@ Use specialized agents when appropriate:
 - Never modify main directly.
 - Keep commits small and focused.
 - Review diffs before committing.
+
+## Workspace boundaries
+- Work only inside the E5-ATLASIS repository.
+- Never create, modify or inspect files outside the repository.
+- Do not use /tmp or external working directories.
+- Never assume files, directories or packages exist; inspect the repository first.
+- Before modifying code, verify the target path exists or explicitly create it as part of the requested change.
+- Never invent an existing implementation.
