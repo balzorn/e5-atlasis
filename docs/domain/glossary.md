@@ -1,28 +1,28 @@
 # Domain Glossary
 
-This glossary includes target-domain terminology. The current implementation still contains legacy names such as InformationAsset and IAxxxxx; these are not the target identity model.
+This glossary defines the target domain. The current implementation still uses the legacy unified
+`InformationAsset` / `IAxxxxx` model; that implementation detail is not the target domain model.
 
 | Term | Definition |
 |---|---|
 | Tenant | Top-level data-isolation and authorization boundary for an independently administered registry customer/group |
 | Organization | Independently identified entity belonging to exactly one tenant |
+| Department | Organizational unit belonging to exactly one organization and tenant |
 | Information System (IS) | A separately managed registry entity representing an information system |
 | Object of Information Infrastructure (OII) | A separately managed registry entity representing an object of information infrastructure |
-| OII composition | Versioned relationship between an OII and the IS included in its composition |
+| OII composition | Versioned relationship between an OII and an IS included in that OII's effective composition |
+| Critically Important Object of Informatization (КВОИ) | A distinct formal regulatory designation; not a synonym for OII and not inferred from internal criticality |
+| Object of Informatization | A separate term used in normative documents; not introduced as a third primary AtlasIS entity by the current v1 decision |
 | Information Asset (legacy IA) | Legacy unified domain entity used by the current implementation to represent either an IS or an OII |
-| Technical ID | Internal stable database identifier; target new entities use UUIDv7 |
-| Display number | Human-readable identifier generated separately from the technical ID; target IS and OII namespaces are scoped by tenant and entity type |
-| Subject | Authenticated actor represented by an immutable internal UUID in AtlasIS |
-| External identity | Identity-provider identifier mapped to a subject; for OIDC, normally the validated (iss, sub) pair |
-| Scoped role assignment | Grant of actions to a subject within an explicit tenant/resource/organization scope |
-| Entity Version | Immutable snapshot of an entity's effective state |
-| Change Request (CR) | Controlled request to change one target entity; applying it creates a new immutable version |
-| Field Change | One proposed field-level change inside a CR |
-| Discussion Thread | Contextual discussion associated with a CR or one of its field changes |
-| Approval | Explicit decision associated with a CR |
-| Owner | Person or role accountable for a registry entity, independent of access grants |
-| Criticality | Business significance of an entity |
-| Risk Level | Current assessed security risk level |
-| Protection Status | State of required information protection measures |
-| Attestation Status | State of applicable attestation/certification requirements |
-| Cybersecurity Center | Holding cybersecurity center that interacts with the information security function |
+| Subject | Immutable internal AtlasIS identity for an authenticated person or actor |
+| External Identity | Identity-provider identity mapped to an internal subject, normally using validated issuer and subject claims |
+| Role Assignment | Audited grant of a role to a subject within an explicit tenant and scope |
+| Asset Version | Legacy implementation term; target IS and OII versions are separate immutable snapshots |
+| Change Request | Controlled request to change exactly one target IS or OII |
+| Approval | Explicit decision required for a Change Request |
+| Discussion Thread | Discussion associated with a supported parent resource or Change Request |
+| Owner | Organization accountable for the specific IS or OII; distinct from technical administrator and named responsible contacts |
+| Criticality | Internal business-significance assessment; does not establish formal КВОИ designation |
+| Risk Assessment | Internal assessment with methodology/version, assessment date, rationale and review metadata |
+| Protection Status | Status of applicable information-protection measures, distinct from evidence such as an attestation document |
+| Cybersecurity Center | Center providing cybersecurity services under the applicable service/contractual model |
