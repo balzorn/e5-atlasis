@@ -5,8 +5,11 @@
 
 ## Context
 
-E5-ATLASIS currently receives the caller identity through the trusted `X-Actor-ID` header.
-The header is an identity placeholder, not an authorization mechanism.
+The current API reads the caller identifier from the `X-Actor-ID` request header.
+This is a temporary development placeholder, not authentication: an arbitrary client can spoof it
+unless a trusted, authenticated gateway removes any client-supplied `X-Actor-ID` header and injects
+a verified actor identifier. The API must not rely on this header as a production security boundary
+or expose the current configuration directly to untrusted clients.
 
 The Change Request workflow now performs controlled state transitions and approval decisions.
 Authorization must therefore be explicit, testable and independent from HTTP transport details.
@@ -31,6 +34,10 @@ Authorization is enforced at the application/use-case boundary, not only in HTTP
 
 HTTP middleware/handlers are responsible for obtaining the authenticated principal and passing it
 to application use cases.
+
+Until a trusted principal resolver is implemented, `X-Actor-ID` is for local/manual workflow
+testing only. Roles and organization scope must never be accepted from untrusted request headers
+or request bodies; they must come from verified identity claims or server-side mappings.
 
 Application use cases are responsible for asking an authorization port before performing a protected operation.
 
