@@ -13,8 +13,9 @@ This document proposes the initial relational model for the AtlasIS registry. It
 The model reflects the following domain decision:
 
 - An Information System (IS) and an Object of Informatization (OII) are distinct domain entities with independent identities, attributes, owners, lifecycle and regulatory facts.
-- An OII may include one IS, several ISs, non-IS technical/information assets, or a combination.
-- An IS may belong to more than one OII if the approved domain rules permit it.
+- An OII may include one or several ISs. In v1, individually managed non-IS technical assets are out of scope.
+- An IS may belong to more than one OII.
+- Nested OIIs are not supported in v1.
 - A relationship between an OII and an IS does not transfer ownership, responsibility, access rights, regulatory status or other attributes.
 - “Create based on” is a controlled copy operation in the application. It creates a new independent record; it does not create inheritance or ongoing synchronization.
 
@@ -362,7 +363,7 @@ This section records a first-pass review of the current Go domain and SQL migrat
 | Priority | Finding | Proposed disposition |
 |---|---|---|
 | P1 | IS/OII distinction is a value of `InformationAsset.Type`, not separate domain identities | Split the domain into IS and OII entities before adding composition. Keep shared validation/workflow infrastructure where it remains semantically correct. |
-| P1 | No OII-to-IS or OII-to-non-IS composition relation exists in the shown schema | Add explicit relational membership tables. Decide whether membership history is represented only in immutable OII-version snapshots or also in an effective/current relation view. |
+| P1 | No OII-to-IS composition relation exists in the shown schema | Add an explicit OII-to-IS membership relation and preserve effective composition in immutable OII-version snapshots. Non-IS composition is deferred from v1. |
 | P1 | Organization and owner are unvalidated strings in the shown schema; department is absent | Introduce organization and department references and database constraints. Do not infer an OII owner from member ISs. |
 | P1 | Tenant boundaries are absent from the shown migrations | Add tenant ownership and tenant-aware composite FKs as part of the approved multi-tenant foundation; do not implement tenant isolation only as application filters. |
 | P1 | Display identifiers are the primary keys and are globally sequenced | Introduce UUID technical primary keys and keep display numbers as separately constrained business identifiers. This is a migration-impacting decision and must be designed before DDL changes. |
