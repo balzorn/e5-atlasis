@@ -162,6 +162,28 @@ The model supports independent actors for:
 
 A later policy iteration may prohibit a single subject from occupying incompatible roles on the same Change Request.
 
+## Initial executable RBAC policy
+
+The first in-process policy adapter uses the role matrix above and denies access by default.
+Every decision requires a known subject, known role set, known action/resource pairing, and an
+explicit organization scope that contains the resource's organization.
+
+The adapter also evaluates relationship attributes that must be sourced by the server:
+
+- Initiators may read and submit only their own Change Requests.
+- Asset Owners may read only assets and Change Requests for which they are the recorded owner.
+- Approvers may read and decide only approvals assigned to them.
+- Reviewer and Security Officer permissions are limited to organizations included in the subject's trusted scope.
+- Administrator does not bypass these checks.
+
+The policy adapter is a first step toward Cedar, not a substitute for authentication. It must be
+called with a subject built from a verified principal and resource attributes loaded or derived by
+the server. It must not be wired to roles supplied by a client.
+
+The change_request.apply action is intentionally denied to all current roles until the responsible execution
+role and its separation-of-duties requirements are explicitly decided. This avoids silently treating
+Administrator or Reviewer as an unrestricted executor.
+
 ## Testing requirements
 
 Authorization becomes a required application-level test dimension.
