@@ -95,21 +95,25 @@ The human-readable number is unique only within its declared numbering scope. In
 | Entity | Prefix example | Numbering scope | Example |
 |---|---|---|---|
 | Organization | `ORG` | Within one tenant | `ORG00007` |
-| Information Asset (IA) | `IA` | Within its owning organization | `IA00001` |
-| Change Request | `CR` | Within the Information Asset it concerns | `CR00001` |
+| Department | `DEPT` | Within its organization | `DEPT00001` |
+| Information System | `IS` | Within one tenant | `IS00001` |
+| Object of Informatization | `OII` | Within one tenant | `OII00001` |
+| Individually managed non-IS technical asset | `TA` | Within one tenant | `TA00001` |
+| Change Request | `CR` | Within its target resource | `CR00001` |
 | Approval | `APR` | Within its Change Request | `APR00001` |
 | Thread | `THR` | Within the resource being discussed | `THR00001` |
 | Comment | `CMT` | Within its thread; if no thread exists, within its direct parent resource | `CMT00001` |
 
-Consequently, two organizations in the same tenant may each have an `IA00001`; two information
-assets may each have a `CR00001`; and two Change Requests may each have an `APR00001`. This is
-intentional: each sequence is local to its entity type and parent. Creating records under one tenant,
-organization, asset or request must not advance another scope's sequence.
+Consequently, two Change Requests targeting different resources may each have a `CR00001`, and two
+Change Requests may each have an `APR00001`. Each sequence is local to its entity type and declared
+scope. Creating records under one tenant, organization, resource or request must not advance another
+scope's sequence. The earlier generic `IA` numbering rule assumed IS and OII were one domain entity;
+Data Model v1 proposes separate `IS` and `OII` display numbers. This is a proposed model change and
+must be ratified together with the data model before implementation.
 
 A short number alone may be ambiguous outside its parent context. User-facing references, copied
 links and support instructions must include the parent path needed to identify the record uniquely,
-for example `ORG00007-IA00001-CR00001` and
-`ORG00007-IA00001-CR00001-THR00001-CMT00001`. The precise separators and whether the full path is
+for example `IS00001-CR00001` and `OII00001-CR00001-THR00001-CMT00001`. The precise separators and whether the full path is
 shown everywhere can be settled in UI/API design; ambiguity must not be introduced into machine
 interfaces. Internally, child-to-parent relationships always use technical IDs.
 
@@ -158,6 +162,8 @@ The proposed scope types are:
 | tenant | Entire tenant | Only explicitly allowed tenant-wide functions |
 | organization | One organization in a tenant | Only resources and actions explicitly granted for that organization |
 | information_system | One information system | Only that system and explicitly supported related actions |
+| informatization_object | One object of informatization | Only that object and explicitly supported related actions |
+| technical_asset | One individually managed non-IS asset | Only that asset and explicitly supported related actions |
 | change_request | One Change Request | Only that workflow object and explicitly supported actions |
 | approval | One approval record | Only that approval and explicitly supported actions |
 
@@ -245,8 +251,9 @@ Initial action vocabulary:
 
 | Resource | Actions |
 |---|---|
-| information_asset | read, create, update, archive |
 | information_system | read, create, update, archive, read_participants, manage_participants |
+| informatization_object | read, create, update, archive, manage_composition |
+| technical_asset | read, create, update, archive |
 | change_request | read, create, update_draft, submit, review, request_changes, reject, approve, apply |
 | approval | read, create, approve, reject |
 | access_assignment | read, grant, revoke, change_scope |
