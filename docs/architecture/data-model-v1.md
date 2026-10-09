@@ -46,11 +46,11 @@ erDiagram
     INFORMATION_SYSTEMS ||--o{ IS_VERSIONS : versions
     INFORMATIZATION_OBJECTS ||--o{ OII_VERSIONS : versions
     OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
-    OII_VERSIONS ||--o{ OII_VERSION_ASSET_MEMBERS : snapshot
+    OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
     CHANGE_REQUESTS ||--o{ APPROVALS : decisions
 ```
 
-The diagram is logical, not a complete schema. Organization ownership and department ownership are independent references on each IS/OII/technical-asset record. The owning department, if present, must belong to the selected owning organization.
+The diagram is logical, not a complete schema. Organization ownership and department ownership are independent references on each IS/OII record. The owning department, if present, must belong to the selected owning organization.
 
 ## 4. Core entities
 
@@ -180,7 +180,6 @@ procedure must be finalized before implementing the identity adapter.
 Use explicit link tables with real foreign keys:
 
 - `oii_information_systems(tenant_id, oii_id, information_system_id, ...)`;
-- `oii_technical_assets(tenant_id, oii_id, technical_asset_id, ...)`.
 
 The link table connects OIIs to ISs; both endpoint records must belong to the same tenant. The same IS may be linked to multiple OIIs.
 
@@ -198,7 +197,6 @@ Avoid storing an array of IS UUIDs or asset UUIDs on the OII row. Avoid a single
 Because the composition of an OII may be a material part of its regulated state, represent the approved composition in versioned form. Proposed structure:
 - `informatization_object_versions`: immutable snapshots of the OII's effective attributes, unique on `(oii_id, version_number)`;
 - `oii_version_information_systems`: IS membership for a specific OII version;
-- `oii_version_technical_assets`: non-IS asset membership for a specific OII version.
 
 A version's membership rows are immutable after the version is applied. The current composition is the membership of the current OII version, not a separately editable list that can drift away from the approved snapshot. Draft composition belongs to the Change Request until application.
 
@@ -246,7 +244,7 @@ For example, where `organizations` has `UNIQUE (tenant_id, id)`, an IS can use:
 - `FOREIGN KEY (tenant_id, organization_owner_id) REFERENCES organizations(tenant_id, id)`;
 - a tenant-aware department reference that also ensures the department belongs to the selected owner organization. This can use a composite key including `tenant_id, organization_id, id`.
 
-Repeat the same pattern for OII, technical assets, composition links, Change Requests and workflow records. Child records should carry `tenant_id` where it materially supports isolation and indexes, but constraints must guarantee it agrees with the parent. Do not rely on duplicated tenant IDs without composite FKs.
+Repeat the same pattern for OII, IS/OII composition links, Change Requests, identity mappings and workflow records. Individually managed non-IS technical assets are deferred from v1. Child records should carry `tenant_id` where it materially supports isolation and indexes, but constraints must guarantee it agrees with the parent. Do not rely on duplicated tenant IDs without composite FKs.
 
 Baseline database practices:
 - UUIDv7 primary keys with real foreign keys;
@@ -385,7 +383,7 @@ Do not replace the current schema in one destructive migration. A safer staged m
 2. Add UUID technical keys and tenant/organization/department catalogues with constraints, initially without dropping existing display IDs.
 3. Map existing `IAxxxxx` rows to new UUIDs while preserving each existing display number as a legacy/reference value.
 4. Split current version rows into IS and OII version tables according to the existing `type`; validate all versions and current-version pointers.
-5. Add OII composition and non-IS asset structures only after the rules for membership, ownership and versioned composition are approved. Do not fabricate composition links from matching names or owners.
+5. Add the approved OII-to-IS composition structures. Individually managed non-IS asset structures remain out of scope for v1. Do not fabricate composition links from matching names or owners.
 6. Migrate Change Request targets and approval references through a verified old-to-new ID mapping; preserve workflow history and the association between a Change Request and the version it produced.
 7. Add tenant-aware FKs and negative integration tests that prove cross-tenant references are rejected.
 8. Switch application reads/writes, compare record counts and version histories, and only then consider removing legacy columns/keys in a later migration.
