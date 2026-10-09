@@ -72,6 +72,59 @@ A subject is an authenticated actor represented by a stable identity identifier.
 membership, tenant membership and delegated authority are obtained from trusted identity claims or
 server-side records. They are not trusted merely because they appear in request headers or bodies.
 
+### 2.6 Technical identifiers and human-readable numbers
+
+Every persisted entity has two distinct identifiers with different purposes:
+
+- `id` (technical identifier): proposed UUIDv7, used for primary keys, foreign-key relationships,
+  API resource identity and machine-to-machine references.
+- `display_number` (human-readable number): a prefixed incrementing number used in screens,
+  discussions, documents and support conversations. It is not a database relationship key and is
+  not proof of authorization.
+
+The human-readable number is unique only within its declared numbering scope. Initial rules:
+
+| Entity | Prefix example | Numbering scope | Example |
+|---|---|---|---|
+| Organization | `ORG` | Within one tenant | `ORG00007` |
+| Information Asset (IA) | `IA` | Within its owning organization | `IA00001` |
+| Change Request | `CR` | Within the Information Asset it concerns | `CR00001` |
+| Approval | `APR` | Within its Change Request | `APR00001` |
+| Thread | `THR` | Within the resource being discussed | `THR00001` |
+| Comment | `CMT` | Within its thread; if no thread exists, within its direct parent resource | `CMT00001` |
+
+Consequently, two organizations in the same tenant may each have an `IA00001`; two information
+assets may each have a `CR00001`; and two Change Requests may each have an `APR00001`. This is
+intentional: each sequence is local to its entity type and parent. Creating records under one tenant,
+organization, asset or request must not advance another scope's sequence.
+
+A short number alone may be ambiguous outside its parent context. User-facing references, copied
+links and support instructions must include the parent path needed to identify the record uniquely,
+for example `ORG00007-IA00001-CR00001` and
+`ORG00007-IA00001-CR00001-THR00001-CMT00001`. The precise separators and whether the full path is
+shown everywhere can be settled in UI/API design; ambiguity must not be introduced into machine
+interfaces. Internally, child-to-parent relationships always use technical IDs.
+
+UUIDv7 is proposed because its time component can improve locality for ordered database indexes
+compared with random UUIDv4. It does not guarantee strict chronological ordering across concurrent
+writers and does not remove the need for primary-key and foreign-key constraints. Technical IDs
+must not encode tenant membership as a substitute for an explicit tenant boundary.
+
+#### Counter generation and integrity
+
+Counter allocation must be safe under concurrent requests. The implementation must not use
+`COUNT(*) + 1`, an unlocked read-modify-write, or a process-local counter. Use a durable
+database-backed counter keyed by tenant, entity type and parent scope as applicable, with atomic
+allocation/locking and a uniqueness constraint on the scope plus display number. Number allocation
+and record creation should be transactionally coordinated. Gaps caused by rollback, deletion or
+failed attempts are acceptable; issued display numbers must not be reused.
+
+Before implementation, define the exact counter schema, uniqueness constraints, deletion/archive
+semantics, and backfill strategy for existing data. All creation paths (API, jobs, imports and future
+integrations) must use the same allocation service. Tests must cover concurrent creation, same-parent
+sequence increments, independent counters across parents and tenants, rollback, and attempted
+duplicate allocation.
+
 ### 2.5 Role and role assignment
 
 A role is a named bundle of possible permissions. A role assignment grants a subject a role within
@@ -297,7 +350,7 @@ defined audit policy, without exposing sensitive internal policy details to the 
 
 1. Approve ADR-011 and this specification.
 2. Inventory existing data and define the initial tenant and organization mapping.
-3. Finalize domain terminology, identifiers, organization relationship types and lifecycle rules.
+3. Finalize domain terminology, identifiers, organization relationship types and lifecycle rules, including UUIDv7 technical IDs, scoped display-number counters and parent-qualified references.
 4. Finalize authorization request/decision contract and trusted principal/assignment resolution.
 5. Define persistence changes, constraints, tenant-aware repository behavior and migration/rollback plan.
 6. Implement application-level authorization in use cases; remove direct trust in raw actor headers.
