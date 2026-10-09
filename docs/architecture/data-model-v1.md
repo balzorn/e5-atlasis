@@ -309,3 +309,63 @@ Before changing code or migrations:
 7. Only then prepare DDL and Go changes in a separate reviewed change.
 
 No code, database migration, API contract or runtime behavior is changed by this document.
+
+## 14. Reconciliation against the current repository (2026-10-09)
+
+This section records a first-pass review of the current Go domain and SQL migrations. It is based on `backend/migrations/0001_initial.sql` through `0005_approval_id_sequence.sql`, `backend/internal/domain/asset/*`, the asset/change application use cases and PostgreSQL repositories. It is not a claim that every repository or API path has been audited.
+
+### 14.1 Current model observed
+
+- `InformationAsset` is a shared Go domain type. Its `Type` is either `information_system` or `information_infrastructure_object`.
+- The `information_assets` table is a root row containing the text primary key and `current_version`. The actual business attributes, including `type`, are stored in `information_asset_versions`.
+- Both IS and OII therefore currently share one identity namespace, one version schema, one ownership schema and one security profile.
+- The ID parser and SQL CHECK constraint require `IA[0-9]{5}`. The database uses a global sequence for IA numbers.
+- A Change Request has one `asset_id` and one `base_version`; its controlled field changes are stored separately. Applying a Change Request creates the next immutable asset version and advances `current_version` inside a transaction. The applier locks the asset row and checks the expected base version.
+- Approval records have a real FK to a Change Request. Approval state/timestamp consistency is constrained in PostgreSQL. Change Request and approval display numbers currently use global sequences.
+- The schema uses TEXT identifiers as primary/foreign keys rather than UUID technical keys. The shown migrations do not define tenant, organization or department catalogue tables, and `organization_id`, `owner_id`, initiator and approver references are not protected by FKs to such catalogues in these migrations.
+- The shown schema does not define OII-to-IS composition tables or an individually managed non-IS asset catalogue. The domain has discussion types, but no discussion persistence table appears in migrations 0001–0005.
+- `change_request_changes.old_value` and `new_value` are JSONB objects. This is acceptable for typed before/after field values if the application validates their shape; it should not be extended to store ownership, composition or other relationships as JSON.
+- `ON DELETE CASCADE` is used for Change Request child changes and approvals. This is convenient for disposable test data but should be reviewed against the requirement to preserve audit and workflow history; business Change Requests should normally be cancelled/archived rather than physically deleted.
+
+### 14.2 Findings and proposed disposition
+
+| Priority | Finding | Proposed disposition |
+|---|---|---|
+| P1 | IS/OII distinction is a value of `InformationAsset.Type`, not separate domain identities | Split the domain into IS and OII entities before adding composition. Keep shared validation/workflow infrastructure where it remains semantically correct. |
+| P1 | No OII-to-IS or OII-to-non-IS composition relation exists in the shown schema | Add explicit relational membership tables. Decide whether membership history is represented only in immutable OII-version snapshots or also in an effective/current relation view. |
+| P1 | Organization and owner are unvalidated strings in the shown schema; department is absent | Introduce organization and department references and database constraints. Do not infer an OII owner from member ISs. |
+| P1 | Tenant boundaries are absent from the shown migrations | Add tenant ownership and tenant-aware composite FKs as part of the approved multi-tenant foundation; do not implement tenant isolation only as application filters. |
+| P1 | Display identifiers are the primary keys and are globally sequenced | Introduce UUID technical primary keys and keep display numbers as separately constrained business identifiers. This is a migration-impacting decision and must be designed before DDL changes. |
+| P2 | IS-specific and OII-specific fields are stored in one version table | Separate IS and OII version snapshots where fields and validation semantics differ. Avoid a universal table with many nullable columns. |
+| P2 | Change Request is hard-wired to the shared asset ID | For the two-target-type v1, use explicit nullable target FKs plus a CHECK requiring exactly one target, or typed child tables. Do not use only `target_type + target_id` without an enforceable FK. |
+| P2 | Change Request numbering is global, while the proposed model scopes CR numbers to a target | Resolve numbering policy. If CRs are target-scoped, add a target-scoped atomic counter and uniqueness constraint; do not silently change existing identifiers. |
+| P2 | Version snapshots contain a business type discriminator | After separating IS/OII, keep each version table constrained to its entity type or use typed version tables. |
+| P2 | Child workflow records cascade on physical deletion | Decide and document retention/deletion rules; prefer soft lifecycle transitions and retained history for governed records. |
+| P3 | Discussion domain types are not represented in the inspected migrations | Treat discussion persistence as not yet evidenced in this migration set; design real parent FKs when adding it. |
+| Keep | Current version pointer uses a composite FK to the version table | Preserve the invariant that the current version must exist. Recreate it separately for IS and OII roots. |
+| Keep | Change application checks base version and locks the root row in a transaction | Preserve optimistic version checks and atomic application when splitting entity repositories. |
+| Keep | SQL checks constrain statuses, risk, criticality and security enums | Retain database constraints, splitting allowed values where IS/OII regulatory semantics differ. |
+
+### 14.3 Migration approach (proposal, not execution)
+
+Do not replace the current schema in one destructive migration. A safer staged migration is:
+
+1. Freeze the target entity and identifier decisions before writing migrations.
+2. Add UUID technical keys and tenant/organization/department catalogues with constraints, initially without dropping existing display IDs.
+3. Map existing `IAxxxxx` rows to new UUIDs while preserving each existing display number as a legacy/reference value.
+4. Split current version rows into IS and OII version tables according to the existing `type`; validate all versions and current-version pointers.
+5. Add OII composition and non-IS asset structures only after the rules for membership, ownership and versioned composition are approved. Do not fabricate composition links from matching names or owners.
+6. Migrate Change Request targets and approval references through a verified old-to-new ID mapping; preserve workflow history and the association between a Change Request and the version it produced.
+7. Add tenant-aware FKs and negative integration tests that prove cross-tenant references are rejected.
+8. Switch application reads/writes, compare record counts and version histories, and only then consider removing legacy columns/keys in a later migration.
+
+The exact sequence depends on whether the environment contains data that must be preserved. No data migration or code change is performed by this document.
+
+### 14.4 Decisions to settle before implementation
+
+1. Is an IS allowed to belong to more than one OII? The current schema has no answer; the target model should not treat this as settled until the business/regulatory rule is confirmed.
+2. Are non-IS components individually registered in v1, or are they deferred?
+3. Is the display-number scope global per tenant and entity type, or local to an owning organization/parent? The proposal in section 9 must be reconciled with the earlier IA scheme and the user's desired operational references.
+4. Should a Change Request be allowed to contain changes to exactly one IS/OII, or can a single request atomically change multiple related entities? The current implementation is single-asset.
+5. Which OII composition facts must be part of immutable regulatory versions, and what evidence/history must remain after membership removal?
+6. What are the authoritative directory sources and stable IDs for organizations, departments and people?
