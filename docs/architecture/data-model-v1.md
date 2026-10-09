@@ -12,7 +12,7 @@ This document proposes the initial relational model for the AtlasIS registry. It
 
 The model reflects the following domain decisions:
 
-- An Information System (IS) and an Object of Informatization (OII) are distinct domain entities with independent identities, attributes, owners, lifecycle and regulatory facts.
+- An Information System (IS) and an Object of Information Infrastructure (OII) are distinct domain entities with independent identities, attributes, owners, lifecycle and regulatory facts.
 - An OII may include one or several ISs. In v1, individually managed non-IS technical assets are out of scope.
 - An IS may belong to more than one OII.
 - Nested OIIs are not supported in v1.
@@ -38,8 +38,8 @@ erDiagram
     TENANTS ||--o{ ORGANIZATIONS : contains
     ORGANIZATIONS ||--o{ DEPARTMENTS : contains
     ORGANIZATIONS ||--o{ INFORMATION_SYSTEMS : owns
-    ORGANIZATIONS ||--o{ INFORMATIZATION_OBJECTS : owns
-    INFORMATIZATION_OBJECTS ||--o{ OII_VERSIONS : versions
+    ORGANIZATIONS ||--o{ INFORMATION_INFRASTRUCTURE_OBJECTS : owns
+    INFORMATION_INFRASTRUCTURE_OBJECTS ||--o{ OII_VERSIONS : versions
     OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
     INFORMATION_SYSTEMS ||--o{ OII_VERSION_IS_MEMBERS : included
     SUBJECTS ||--o{ EXTERNAL_IDENTITIES : linked
@@ -113,9 +113,18 @@ Suggested fields:
 
 Use separate related tables for stable structured IS-specific attributes when their cardinality warrants it. Do not put every possible IS property into one table or use JSONB for core fields that need validation, joins, filtering or reporting.
 
+Normative/GRC attribute groups to be modeled explicitly during detailed design (not yet a column-level schema):
+- information processed and the applicability basis for Order No. 66;
+- the applicable IS type/classification required by the relevant regulatory process, including the source, decision date and supporting evidence;
+- information-protection-system applicability and status, kept separate from evidence that the system is attested;
+- attestation status and attestation evidence metadata (number, issue date, validity/review date, issuing body and document reference, where applicable);
+- risk/criticality assessment as an internal GRC assessment with methodology/version, assessment date, assessor, rationale and review date; do not use it as a proxy for formal CII designation.
+
+For each group, distinguish “not applicable”, “required but not completed”, “in progress”, “completed/current”, “expired/overdue” and “unknown” only where these states are meaningful. The final enumerations and mandatory conditions require review against the applicable normative clause and internal procedure.
+
 The owning organization and department are independent of any OII that contains the IS. The department must belong to the same tenant and the selected owning organization. Reassignment of ownership is an audited change and does not change the IS's technical identity.
 
-### 4.5 Object of Informatization (OII)
+### 4.5 Object of Information Infrastructure (OII)
 
 A first-class domain entity with independent identity, ownership, lifecycle and regulatory attributes.
 
@@ -129,7 +138,14 @@ Suggested fields:
 - `lifecycle_status`;
 - timestamps and actor references as required.
 
-OII-specific attributes (e.g. regulatory classifications, protection-system status, attestation details or assessment results) should be modeled as explicit columns or related tables according to their lifecycle and cardinality. Do not copy these from a member IS as authoritative facts.
+OII-specific attributes should be modeled as explicit columns or related tables according to their lifecycle and cardinality. Candidate groups include:
+- applicability of the Order No. 130 requirements and the responsible applicability rationale;
+- structural and logical diagram/document references, with version, owner, approval/review date and freshness status;
+- status of key cybersecurity controls (access control, privileged access, patching, time synchronization, perimeter protection/IDS/IPS where applicable, event collection/retention and malware protection), with last verification date, responsible party, exceptions and evidence reference;
+- cybersecurity-center service/contract applicability, provider/center reference, effective dates, responsible contacts, object-specific regulation and response-plan references where that service model applies;
+- any formal regulatory designation, such as a possible CII designation, only after the legal relationship to the OII record has been established. Store the decision/source metadata and evidence separately. Until that legal mapping is confirmed, do not assume that a CII designation has a direct foreign-key relationship to an OII, and never infer CII status from internal criticality or merely from the fact that a record is an OII.
+
+These are candidate attribute groups, not a statement that every field is universally mandatory or must be stored directly in AtlasIS. The matrix determines applicability and whether AtlasIS stores the fact, evidence metadata or a protected external reference. Do not copy any of these facts from a member IS as authoritative facts.
 
 The OII owner may be different from every member IS owner. Ownership is not derived from the OII composition.
 
@@ -191,7 +207,7 @@ The effective current composition is the membership of the current OII version. 
 ### Composition versioning
 
 Because the composition of an OII may be a material part of its regulated state, represent the approved composition in versioned form. Proposed structure:
-- `informatization_object_versions`: immutable snapshots of the OII's effective attributes, unique on `(oii_id, version_number)`;
+- `information_infrastructure_object_versions`: immutable snapshots of the OII's effective attributes, unique on `(oii_id, version_number)`;
 - `oii_version_information_systems`: IS membership for a specific OII version;
 
 A version's membership rows are immutable after the version is applied. The current composition is the membership of the current OII version, not a separately editable list that can drift away from the approved snapshot. Draft composition belongs to the Change Request until application.
@@ -262,7 +278,7 @@ The earlier generic `IA00001` display-number rule assumed that IS and OII were o
 - `ORG00001`: organization, counter scoped to tenant;
 - `DEPT00001`: department, counter scoped to organization;
 - `IS00001`: information system, counter scoped to tenant;
-- `OII00001`: object of informatization, counter scoped to tenant;
+- `OII00001`: object of information infrastructure, counter scoped to tenant;
 - `CR00001`: Change Request, counter scoped to target resource;
 - `APR00001`: approval, counter scoped to Change Request;
 - `THR00001`: discussion thread, counter scoped to parent resource;
@@ -389,6 +405,7 @@ The exact sequence depends on whether the environment contains data that must be
 ### 14.4 Decisions to settle before implementation
 
 1. Which exact IS/OII fields are immutable business/regulatory version state versus operational metadata, after checking OAC Orders No. 66 and No. 130?
-2. Which verified Keycloak claims and AD attributes will map an external identity to an internal AtlasIS subject, and what controlled procedure will support identity-source changes?
-3. What retention period and audit evidence are required for removed OII members?
-4. What exact FK/table layouts will be used for Change Request targets, discussions and identity mappings?
+2. How should the formal CII designation and its evidence be linked to AtlasIS records without treating CII as a synonym for OII? The source entity/reference and legal mapping must be confirmed before DDL.
+3. Which verified Keycloak claims and AD attributes will map an external identity to an internal AtlasIS subject, and what controlled procedure will support identity-source changes?
+4. What retention period and audit evidence are required for removed OII members?
+5. What exact FK/table layouts will be used for Change Request targets, discussions and identity mappings?
