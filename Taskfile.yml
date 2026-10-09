@@ -19,6 +19,113 @@ tasks:
     cmds:
       - task --list
 
+  doctor:
+    desc: Run read-only diagnostics for the local development environment and repository
+    cmds:
+      - task: doctor:git
+      - task: doctor:tools
+      - task: doctor:go
+      - task: doctor:auth
+
+  doctor:git:
+    desc: Show Git branch, working tree and local/remote-tracking divergence
+    cmds:
+      - |
+        set -eu
+        echo "=== GIT REPOSITORY ==="
+        git rev-parse --show-toplevel
+        echo
+        echo "=== WORKING TREE ==="
+        git status --short --branch
+        echo
+        echo "=== HEAD ==="
+        git log -1 --format='%h %s'
+        echo
+        echo "=== UPSTREAM DIVERGENCE (does not fetch) ==="
+        if upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)"; then
+          echo "upstream: $upstream"
+          counts="$(git rev-list --left-right --count "HEAD...$upstream")"
+          printf '%s\n' "$counts" | awk '{printf "ahead: %s\nbehind: %s\n", $1, $2}'
+          echo "Note: counts use local remote-tracking refs; run 'git fetch' to refresh them."
+        else
+          echo "No upstream configured for the current branch."
+        fi
+
+  doctor:tools:
+    desc: Check required and optional development utilities
+    cmds:
+      - |
+        set -u
+        missing=0
+        echo "=== REQUIRED TOOLS ==="
+        for tool in git go task rg; do
+          if command -v "$tool" >/dev/null 2>&1; then
+            printf 'OK      %-12s %s\n' "$tool" "$(command -v "$tool")"
+          else
+            printf 'MISSING %-12s\n' "$tool"
+            missing=1
+          fi
+        done
+        echo
+        echo "=== OPTIONAL TOOLS ==="
+        for tool in jq curl yq shellcheck docker psql; do
+          if command -v "$tool" >/dev/null 2>&1; then
+            printf 'OK      %-12s %s\n' "$tool" "$(command -v "$tool")"
+          else
+            printf 'OPTIONAL %-11s not installed\n' "$tool"
+          fi
+        done
+        if command -v docker >/dev/null 2>&1; then
+          if docker compose version >/dev/null 2>&1; then
+            printf 'OK      %-12s %s\n' "docker compose" "$(docker compose version --short 2>/dev/null || echo available)"
+          else
+            echo "OPTIONAL docker compose is not available"
+          fi
+        fi
+        exit "$missing"
+
+  doctor:go:
+    desc: Inspect Go version, module root and formatting without changing files
+    dir: '{{.BACKEND_DIR}}'
+    cmds:
+      - |
+        set -eu
+        echo "=== GO VERSION ==="
+        go version
+        echo
+        echo "=== MODULE ==="
+        go env GOMOD
+        echo
+        echo "=== GO FORMATTING ==="
+        unformatted="$(gofmt -l .)"
+        if [ -z "$unformatted" ]; then
+          echo "OK: all Go files are gofmt-formatted"
+        else
+          echo "WARNING: these Go files need formatting:"
+          printf '%s\n' "$unformatted"
+        fi
+
+  doctor:auth:
+    desc: Locate authentication and authorization configuration and call sites
+    cmds:
+      - |
+        set -u
+        echo "=== AUTHENTICATION CONFIGURATION ==="
+        rg -n --glob '*.go' 'principalResolverForConfig|ATLASIS_AUTH_MODE|development-header|NewRejectingPrincipalResolver|NewDevelopmentHeaderPrincipalResolver' backend/cmd backend/internal || true
+        echo
+        echo "=== AUTHORIZATION CALL SITES ==="
+        rg -n --glob '*.go' '\.Authorize\(|Authorizer|RBACAuthorizer|ErrForbidden' backend/internal backend/cmd || true
+        echo
+        echo "=== PRINCIPAL AND ROLE USAGE ==="
+        rg -n --glob '*.go' 'principalFromContext|OrganizationIDs|RoleInitiator|RoleReviewer|RoleApprover|RoleAssetOwner|RoleSecurityOfficer|RoleAdministrator' backend/internal backend/cmd || true
+        echo
+        echo "=== APPLICATION FILES ==="
+        if [ -d backend/internal/application ]; then
+          rg --files backend/internal/application | sort
+        else
+          echo "Application directory not found."
+        fi
+
   db:up:
     desc: Start the local PostgreSQL container
     cmds:
