@@ -45,8 +45,6 @@ erDiagram
     SUBJECTS ||--o{ EXTERNAL_IDENTITIES : linked
     SUBJECTS ||--o{ ROLE_ASSIGNMENTS : receives
     INFORMATION_SYSTEMS ||--o{ IS_VERSIONS : versions
-    INFORMATIZATION_OBJECTS ||--o{ OII_VERSIONS : versions
-    OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
     CHANGE_REQUESTS ||--o{ APPROVALS : decisions
 ```
 
