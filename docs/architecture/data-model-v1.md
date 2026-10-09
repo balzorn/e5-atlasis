@@ -10,7 +10,7 @@
 
 This document proposes the initial relational model for the AtlasIS registry. It is intentionally pragmatic: explicit domain entities and foreign keys, tenant isolation enforced in the database as well as the application, immutable versions for controlled changes, and no universal metamodel or generic entity-attribute-value design.
 
-The model reflects the following domain decision:
+The model reflects the following domain decisions:
 
 - An Information System (IS) and an Object of Informatization (OII) are distinct domain entities with independent identities, attributes, owners, lifecycle and regulatory facts.
 - An OII may include one or several ISs. In v1, individually managed non-IS technical assets are out of scope.
@@ -45,7 +45,6 @@ erDiagram
     SUBJECTS ||--o{ ROLE_ASSIGNMENTS : receives
     INFORMATION_SYSTEMS ||--o{ IS_VERSIONS : versions
     INFORMATIZATION_OBJECTS ||--o{ OII_VERSIONS : versions
-    OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
     OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
     CHANGE_REQUESTS ||--o{ APPROVALS : decisions
 ```
