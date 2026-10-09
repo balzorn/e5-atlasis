@@ -150,6 +150,7 @@ Suggested conceptual entities:
 - subjects: internal UUID primary key, lifecycle/status, created/updated timestamps;
 - external_identities: internal UUID, subject_id FK, issuer/source namespace, external subject identifier,
   optional directory identifier such as sAMAccountName, linked_at, link_status and audit metadata;
+  enforce uniqueness for the issuer/source namespace plus external subject identifier;
 - subject_tenant_memberships: subject_id, tenant_id, status, validity period and audit metadata;
 - subject_organization_memberships: subject_id, tenant_id, organization_id, status, validity period
   and audit metadata, if organization membership is needed for authorization;
@@ -159,8 +160,9 @@ Suggested conceptual entities:
 These are conceptual names, not a finalized DDL schema. Use UUIDs and real foreign keys; enforce tenant
 consistency on memberships and assignments. The external identity key should normally be the validated
 OIDC issuer/subject pair (iss, sub). Store sAMAccountName as a namespaced attribute/lookup key, not as
-the immutable internal subject ID. Do not assume sAMAccountName, email, UPN, domain or display name is
-globally unique or immutable.
+the immutable internal subject ID. If it is used for lookup, its uniqueness constraint must include the
+AD/source namespace; never impose global uniqueness on the bare account name. Do not assume
+sAMAccountName, email, UPN, domain or display name is globally unique or immutable.
 
 For v1, Keycloak provides verified OIDC claims and corporate Active Directory is the initial authoritative
 directory for user profile attributes. AtlasIS must allow an administrator or delegated access
@@ -225,7 +227,7 @@ Threads and comments must reference their parent with relational integrity. Avoi
 
 ## 7. Ownership and responsibility
 
-For each IS, OII and individually managed technical asset, store ownership explicitly:
+For each IS and OII in v1, store ownership explicitly. If individually managed non-IS assets are added in a future version, apply the same ownership principles:
 - owning organization is required;
 - owning department is optional unless business/regulatory rules require it;
 - department, when set, must belong to the same organization and tenant;
