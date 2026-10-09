@@ -66,11 +66,36 @@ must also reference one organization belonging to that same tenant. Workflow rec
 tenant context from their associated resource and must not accept a client-supplied tenant identifier
 as authoritative.
 
-### 2.4 Subject
+### 2.4 Subject and external identity
 
-A subject is an authenticated actor represented by a stable identity identifier. Roles, organization
-membership, tenant membership and delegated authority are obtained from trusted identity claims or
-server-side records. They are not trusted merely because they appear in request headers or bodies.
+A subject is an authenticated actor represented inside AtlasIS by an immutable internal UUID. The
+internal subject is separate from the external identity used by the identity provider.
+
+For v1:
+- Keycloak is the OIDC provider; AtlasIS obtains identity and profile attributes from verified OIDC claims.
+- Corporate Active Directory is the initial authoritative source for user identity attributes. A later
+  corporate identity service with its own API may replace or supplement the directory integration.
+- The external identity mapping must use a stable issuer-qualified identifier, normally the validated
+  OIDC pair (iss, sub), and may also retain the corresponding AD identifier such as sAMAccountName
+  as an attribute or lookup key. Do not use sAMAccountName, email, UPN, display name or domain name
+  as the sole immutable internal key.
+- sAMAccountName must be treated as potentially ambiguous across tenants or identity sources. Store
+  the source/namespace with the value and enforce uniqueness only within the explicitly defined
+  namespace. The current use of one AD forest/domain does not make mutable account names or mail/domain
+  attributes permanent identifiers.
+- A user's organization, domain, email address, display name and other profile claims may change.
+  Such changes update profile/mapping attributes; they must not silently create a new internal subject
+  or grant/revoke roles solely because a mutable claim changed.
+- If a person moves between organizations and the corporate account remains the same, preserve the
+  internal subject and explicitly review/update the person's organization memberships and role
+  assignments according to policy. A future identity-source migration must allow a new external
+  identity to be linked to an existing internal subject through a controlled, audited operation.
+
+The first successful OIDC login may create a minimally provisioned subject/mapping, subject to
+account-linking and tenant-assignment rules. An authorized AtlasIS administrator or delegated role
+must be able to find that known subject later and grant, change or revoke AtlasIS roles and scopes.
+OIDC authentication alone does not grant business permissions. Role assignments and their audit
+history are AtlasIS-owned records, not values inferred solely from profile claims.
 
 ### 2.5 Role and role assignment
 
@@ -98,7 +123,6 @@ The human-readable number is unique only within its declared numbering scope. In
 | Department | `DEPT` | Within its organization | `DEPT00001` |
 | Information System | `IS` | Within one tenant | `IS00001` |
 | Object of Informatization | `OII` | Within one tenant | `OII00001` |
-| Individually managed non-IS technical asset | `TA` | Within one tenant | `TA00001` |
 | Change Request | `CR` | Within its target resource | `CR00001` |
 | Approval | `APR` | Within its Change Request | `APR00001` |
 | Thread | `THR` | Within the resource being discussed | `THR00001` |
@@ -107,9 +131,9 @@ The human-readable number is unique only within its declared numbering scope. In
 Consequently, two Change Requests targeting different resources may each have a `CR00001`, and two
 Change Requests may each have an `APR00001`. Each sequence is local to its entity type and declared
 scope. Creating records under one tenant, organization, resource or request must not advance another
-scope's sequence. The earlier generic `IA` numbering rule assumed IS and OII were one domain entity;
-Data Model v1 proposes separate `IS` and `OII` display numbers. This is a proposed model change and
-must be ratified together with the data model before implementation.
+scope's sequence. The former generic `IA` numbering is superseded for the target model: IS and OII have separate
+display-number namespaces, each scoped to its tenant. This is the agreed target for v1; migration of
+existing `IA` identifiers must preserve a verified mapping and legacy references.
 
 A short number alone may be ambiguous outside its parent context. User-facing references, copied
 links and support instructions must include the parent path needed to identify the record uniquely,
@@ -163,7 +187,6 @@ The proposed scope types are:
 | organization | One organization in a tenant | Only resources and actions explicitly granted for that organization |
 | information_system | One information system | Only that system and explicitly supported related actions |
 | informatization_object | One object of informatization | Only that object and explicitly supported related actions |
-| technical_asset | One individually managed non-IS asset | Only that asset and explicitly supported related actions |
 | change_request | One Change Request | Only that workflow object and explicitly supported actions |
 | approval | One approval record | Only that approval and explicitly supported actions |
 
@@ -184,7 +207,7 @@ are a separate administration concept and must not be represented as ordinary te
 | Initiator | Initiate and submit changes | Limited by assignment scope and request/resource relationships |
 | Reviewer | Review change requests | No implicit approval or apply rights |
 | Approver | Decide approvals | Must be assigned to the approval; self-approval depends on change policy |
-| Asset Owner | Manage assigned information systems | Participant management limited by delegation |
+| IS/OII Owner | Manage assigned information systems or OIIs | Only the assigned resource; participant/composition management limited by delegation |
 | IS Participant | Participate in an assigned information system | Only explicitly granted object actions |
 | Security Officer | Perform information-security oversight | Organization-scoped by default; tenant-wide authority assigned separately |
 | Access Administrator | Administer access assignments | Only within an explicitly delegated administration scope |
@@ -226,7 +249,7 @@ requiring a role name to be removed from unrelated scopes.
 
 ## 7. Delegated management of IS participants
 
-An Asset Owner may manage participants for an information system only if:
+An IS Owner may manage participants for an information system only if:
 - the owner has an active, trusted assignment for that system or a policy-recognized ownership relation;
 - participant management is explicitly granted for the relevant action;
 - the target participant and system belong to the same tenant;
@@ -253,7 +276,6 @@ Initial action vocabulary:
 |---|---|
 | information_system | read, create, update, archive, read_participants, manage_participants |
 | informatization_object | read, create, update, archive, manage_composition |
-| technical_asset | read, create, update, archive |
 | change_request | read, create, update_draft, submit, review, request_changes, reject, approve, apply |
 | approval | read, create, approve, reject |
 | access_assignment | read, grant, revoke, change_scope |
