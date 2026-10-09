@@ -72,6 +72,14 @@ A subject is an authenticated actor represented by a stable identity identifier.
 membership, tenant membership and delegated authority are obtained from trusted identity claims or
 server-side records. They are not trusted merely because they appear in request headers or bodies.
 
+### 2.5 Role and role assignment
+
+A role is a named bundle of possible permissions. A role assignment grants a subject a role within
+an explicit tenant and scope, subject to validity, delegation and policy conditions.
+
+A role name alone never proves authorization. Every decision also considers tenant, scope, action,
+resource attributes and relevant relationships.
+
 ### 2.6 Technical identifiers and human-readable numbers
 
 Every persisted entity has two distinct identifiers with different purposes:
@@ -124,14 +132,6 @@ semantics, and backfill strategy for existing data. All creation paths (API, job
 integrations) must use the same allocation service. Tests must cover concurrent creation, same-parent
 sequence increments, independent counters across parents and tenants, rollback, and attempted
 duplicate allocation.
-
-### 2.5 Role and role assignment
-
-A role is a named bundle of possible permissions. A role assignment grants a subject a role within
-an explicit tenant and scope, subject to validity, delegation and policy conditions.
-
-A role name alone never proves authorization. Every decision also considers tenant, scope, action,
-resource attributes and relevant relationships.
 
 ## 3. Tenant isolation requirements
 
