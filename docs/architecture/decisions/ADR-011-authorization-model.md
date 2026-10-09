@@ -141,7 +141,7 @@ Initial logical roles:
 - Initiator
 - Reviewer
 - Approver
-- Asset Owner
+- IS/OII Owner
 - IS Participant
 - Security Officer
 - Access Administrator
@@ -198,7 +198,7 @@ from job title, organizational relationship or membership in a group.
 
 Some permissions require resource attributes in addition to role and scope. Examples include:
 - Initiators may read or submit only Change Requests they are entitled to access;
-- Asset Owners may manage participants only for information systems they own and only within delegated limits;
+- IS/OII Owners may manage participants only for information systems they own and only within delegated limits;
 - Approvers may decide only approvals assigned to them;
 - organization-scoped roles are limited to resources in the assigned organization, subject to explicit policy;
 - every resource and subject in a decision must belong to the same trusted tenant context.
@@ -256,7 +256,7 @@ implementation with Cedar should not require changes to domain invariants or wor
 | Initiator | Create and submit Change Requests within assigned scope; access own or otherwise authorized requests |
 | Reviewer | Review requests within assigned scope; no implicit apply permission |
 | Approver | Decide assigned approvals, subject to change-type policy and separation of duties |
-| Asset Owner | Read owned information systems and manage their participants within delegated limits |
+| IS/OII Owner | Read assigned ISs/OIIs and manage participants or OII composition only within delegated limits |
 | IS Participant | Access explicitly assigned information systems and permitted actions |
 | Security Officer | Security oversight within assigned organization by default; tenant-wide authority requires a separate assignment |
 | Access Administrator | Manage role assignments only within explicitly delegated administration scope |
