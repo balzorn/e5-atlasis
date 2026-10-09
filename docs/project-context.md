@@ -39,7 +39,11 @@ Working rules:
 
 AtlasIS is a holding-wide registry for information systems and objects of information infrastructure, including responsible persons, purpose, criticality/risk, information protection, attestation and interaction with the cybersecurity center. Registry attributes and validations must be traced to applicable Republic of Belarus requirements, especially OAC orders No. 66 and No. 130. Do not infer legal requirements from memory; cite exact provisions in a traceable matrix.
 
-Agreed target architecture for v1:
+Agreed target terminology and architecture for v1:
+- **IS** means Information System.
+- **OII** means Object of Information Infrastructure, the second primary domain entity alongside IS.
+- **CII (КВОИ)** means the distinct formal regulatory designation “critically important object of informatization”; it is not a synonym for OII and must not be inferred from internal criticality.
+- “Object of Informatization” remains a separate normative term and is not introduced as a third primary AtlasIS entity by this decision.
 - IS and OII are separate domain entities with independent IDs, owners, attributes, permissions and versions.
 - An OII may contain one or more IS; an IS may belong to multiple OIIs. Nested OIIs are unsupported in v1.
 - OII composition does not transfer ownership, attributes or permissions.
