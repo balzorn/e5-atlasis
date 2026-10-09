@@ -149,6 +149,10 @@ func (fakeApprovalIDGenerator) Next(context.Context) (domainapproval.ID, error) 
 }
 
 func newTestHandler() *Handler {
+	return newTestHandlerWithResolver(NewDevelopmentHeaderPrincipalResolver())
+}
+
+func newTestHandlerWithResolver(principalResolver PrincipalResolver) *Handler {
 	assetRepo := &fakeAssetRepository{
 		asset: &domainasset.InformationAsset{
 			ID:             "IA00001",
@@ -220,6 +224,7 @@ func newTestHandler() *Handler {
 		applicationapproval.NewListApprovalsUseCase(changeRepo, approvalRepo),
 		applicationapproval.NewApproveApprovalUseCase(approvalRepo),
 		applicationapproval.NewRejectApprovalUseCase(approvalRepo),
+		principalResolver,
 	)
 }
 
@@ -303,8 +308,8 @@ func TestCreateAssetRejectsMissingActor(t *testing.T) {
 
 	newTestHandler().Routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 }
 
@@ -414,9 +419,22 @@ func TestCreateChangeRequestRejectsInvalidFieldValue(t *testing.T) {
 	}
 }
 
+func TestAPIRejectsSpoofedActorHeaderWithoutTrustedResolver(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/assets/IA00001", nil)
+	req.Header.Set("X-Actor-ID", "USR001")
+
+	newTestHandlerWithResolver(NewRejectingPrincipalResolver()).Routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401; body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGetAssetByID(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/assets/IA00001", nil)
+	req.Header.Set("X-Actor-ID", "USR001")
 
 	newTestHandler().Routes().ServeHTTP(rec, req)
 
@@ -436,6 +454,7 @@ func TestGetAssetByID(t *testing.T) {
 func TestGetAssetByIDRejectsInvalidID(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/assets/not-an-asset", nil)
+	req.Header.Set("X-Actor-ID", "USR001")
 
 	newTestHandler().Routes().ServeHTTP(rec, req)
 
@@ -468,10 +487,12 @@ func TestGetAssetByIDReturnsNotFound(t *testing.T) {
 		applicationapproval.NewListApprovalsUseCase(changeRepo, approvalRepo),
 		applicationapproval.NewApproveApprovalUseCase(approvalRepo),
 		applicationapproval.NewRejectApprovalUseCase(approvalRepo),
+		NewDevelopmentHeaderPrincipalResolver(),
 	)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/assets/IA00099", nil)
+	req.Header.Set("X-Actor-ID", "USR001")
 
 	handler.Routes().ServeHTTP(rec, req)
 
@@ -483,6 +504,7 @@ func TestGetAssetByIDReturnsNotFound(t *testing.T) {
 func TestGetChangeRequestByID(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/change-requests/CR00001", nil)
+	req.Header.Set("X-Actor-ID", "USR001")
 
 	newTestHandler().Routes().ServeHTTP(rec, req)
 

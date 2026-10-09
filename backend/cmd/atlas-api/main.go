@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"strings"
 
 	applicationapproval "github.com/balzorn/e5-atlasis/backend/internal/application/approval"
 	applicationasset "github.com/balzorn/e5-atlasis/backend/internal/application/asset"
@@ -32,6 +33,24 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+
+	addr := os.Getenv("HTTP_ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+
+	authMode := os.Getenv("ATLASIS_AUTH_MODE")
+	principalResolver, err := principalResolverForConfig(authMode, addr)
+	if err != nil {
+		logger.Error("configure API authentication", "error", err)
+		os.Exit(1)
+	}
+	if strings.TrimSpace(authMode) == "" {
+		logger.Warn("ATLASIS_AUTH_MODE is unset; API routes will reject requests until trusted authentication is configured")
+	}
+	if strings.TrimSpace(authMode) == developmentHeaderAuthMode {
+		logger.Warn("development header authentication enabled; API listener is restricted to a loopback IP address")
+	}
 
 	assetRepository := postgres.NewAssetRepository(db)
 	changeRequestRepository := postgres.NewChangeRequestRepository(db)
@@ -86,12 +105,8 @@ func main() {
 		listApprovals,
 		approveApproval,
 		rejectApproval,
+		principalResolver,
 	)
-
-	addr := os.Getenv("HTTP_ADDR")
-	if addr == "" {
-		addr = ":8080"
-	}
 
 	server := &http.Server{
 		Addr:              addr,

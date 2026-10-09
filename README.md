@@ -51,3 +51,15 @@ E5_ATLASIS_TEST_DATABASE_URL='postgres://user:password@host:5432/my_project_test
 ```
 
 Do not store real credentials in the repository. The URLs in the local Taskfile are development-only defaults matching the bundled local Compose environment.
+
+
+## API identity during development
+
+The `task api` task enables the explicit `development-header` identity mode for local development.
+In this mode, requests must include `X-Actor-ID`, and the API process refuses to start unless
+`HTTP_ADDR` is a loopback IP address such as `127.0.0.1:8080` or `[::1]:8080`.
+
+This header is **not authentication** and grants no roles or organization permissions. Do not expose
+this mode to other hosts or use it in production. When `ATLASIS_AUTH_MODE` is unset, the API starts
+in fail-closed mode and rejects all `/api/v1/` requests with HTTP 401 until a trusted authentication
+resolver is configured. OIDC integration is not implemented yet.

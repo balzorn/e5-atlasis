@@ -35,9 +35,11 @@ Authorization is enforced at the application/use-case boundary, not only in HTTP
 HTTP middleware/handlers are responsible for obtaining the authenticated principal and passing it
 to application use cases.
 
-Until a trusted principal resolver is implemented, `X-Actor-ID` is for local/manual workflow
-testing only. Roles and organization scope must never be accepted from untrusted request headers
-or request bodies; they must come from verified identity claims or server-side mappings.
+Until a trusted principal resolver is implemented, `X-Actor-ID` is available only through the explicit
+`development-header` mode for local/manual workflow testing. Startup rejects this mode unless the
+listener binds to a loopback IP address. With `ATLASIS_AUTH_MODE` unset, API routes fail closed with
+HTTP 401. Roles and organization scope must never be accepted from untrusted request headers or
+request bodies; they must come from verified identity claims or server-side mappings.
 
 Application use cases are responsible for asking an authorization port before performing a protected operation.
 

@@ -42,6 +42,8 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateInformationAssetRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '201':
           description: Information Asset created
           headers:
@@ -65,8 +67,11 @@ paths:
       operationId: getInformationAsset
       summary: Get an Information Asset
       parameters:
+        - $ref: '#/components/parameters/ActorId'
         - $ref: '#/components/parameters/AssetId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Information Asset
           content:
@@ -93,6 +98,8 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateChangeRequestRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '201':
           description: Change Request created
           headers:
@@ -120,8 +127,11 @@ paths:
       operationId: getChangeRequest
       summary: Get a Change Request
       parameters:
+        - $ref: '#/components/parameters/ActorId'
         - $ref: '#/components/parameters/ChangeRequestId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Change Request
           content:
@@ -144,6 +154,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Change Request submitted
           content:
@@ -167,6 +179,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Change Request is under review
           content:
@@ -190,6 +204,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Changes requested
           content:
@@ -213,6 +229,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Change Request rejected
           content:
@@ -236,6 +254,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Change Request approved
           content:
@@ -259,6 +279,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Updated Information Asset
           content:
@@ -282,6 +304,8 @@ paths:
         - $ref: '#/components/parameters/ChangeRequestId'
         - $ref: '#/components/parameters/ActorId'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Approval list
           content:
@@ -310,6 +334,8 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateApprovalRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '201':
           description: Approval created
           headers:
@@ -346,6 +372,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ApprovalDecisionRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Approval approved
           content:
@@ -379,6 +407,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ApprovalDecisionRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Approval rejected
           content:
@@ -404,7 +434,7 @@ components:
       name: X-Actor-ID
       in: header
       required: true
-      description: Caller identity supplied by the trusted caller until OIDC middleware is introduced.
+      description: Development-only actor placeholder accepted only when ATLASIS_AUTH_MODE=development-header and HTTP_ADDR binds to a loopback IP; this header is not authentication.
       schema:
         type: string
         minLength: 1
@@ -438,6 +468,13 @@ components:
       example: APR00001
 
   responses:
+    Unauthorized:
+      description: Authentication is required or the principal is invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
     BadRequest:
       description: Invalid request
       content:

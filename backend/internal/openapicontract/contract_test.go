@@ -65,8 +65,39 @@ func TestOpenAPIContract(t *testing.T) {
 		}
 
 		for _, method := range methods {
-			if _, ok := pathItem[method]; !ok {
+			operationValue, ok := pathItem[method]
+			if !ok {
 				t.Errorf("missing OpenAPI operation %s %s", strings.ToUpper(method), path)
+				continue
+			}
+
+			if path != "/healthz" {
+				operation, ok := operationValue.(map[string]any)
+				if !ok {
+					t.Errorf("operation %s %s is not a mapping", strings.ToUpper(method), path)
+					continue
+				}
+
+				hasActorID := false
+				if parameters, ok := operation["parameters"].([]any); ok {
+					for _, parameterValue := range parameters {
+						parameter, ok := parameterValue.(map[string]any)
+						if ok && parameter["$ref"] == "#/components/parameters/ActorId" {
+							hasActorID = true
+							break
+						}
+					}
+				}
+				if !hasActorID {
+					t.Errorf("operation %s %s does not document the principal header", strings.ToUpper(method), path)
+				}
+
+				operationResponses, ok := operation["responses"].(map[string]any)
+				if !ok {
+					t.Errorf("operation %s %s has no responses mapping", strings.ToUpper(method), path)
+				} else if _, ok := operationResponses["401"]; !ok {
+					t.Errorf("operation %s %s does not document HTTP 401", strings.ToUpper(method), path)
+				}
 			}
 		}
 	}
@@ -108,6 +139,7 @@ func TestOpenAPIContract(t *testing.T) {
 	}
 
 	requiredResponses := []string{
+		"Unauthorized",
 		"BadRequest",
 		"UnsupportedMediaType",
 		"Conflict",

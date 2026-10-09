@@ -39,6 +39,7 @@ type Handler struct {
 	listApprovals    *applicationapproval.ListApprovalsUseCase
 	approveApproval  *applicationapproval.ApproveApprovalUseCase
 	rejectApproval   *applicationapproval.RejectApprovalUseCase
+	principalResolver PrincipalResolver
 }
 
 func NewHandler(
@@ -56,6 +57,7 @@ func NewHandler(
 	listApprovals *applicationapproval.ListApprovalsUseCase,
 	approveApproval *applicationapproval.ApproveApprovalUseCase,
 	rejectApproval *applicationapproval.RejectApprovalUseCase,
+	principalResolver PrincipalResolver,
 ) *Handler {
 	return &Handler{
 		getAsset:         getAsset,
@@ -72,6 +74,7 @@ func NewHandler(
 		listApprovals:    listApprovals,
 		approveApproval:  approveApproval,
 		rejectApproval:   rejectApproval,
+		principalResolver: principalResolver,
 	}
 }
 
@@ -94,7 +97,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/approvals/{approvalID}/approve", h.approveApprovalHandler)
 	mux.HandleFunc("POST /api/v1/approvals/{approvalID}/reject", h.rejectApprovalHandler)
 
-	return mux
+	return h.authenticateAPI(mux)
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, _ *http.Request) {
@@ -114,9 +117,8 @@ type createAssetRequest struct {
 }
 
 func (h *Handler) createAssetHandler(w http.ResponseWriter, r *http.Request) {
-	actorID := strings.TrimSpace(r.Header.Get("X-Actor-ID"))
-	if actorID == "" || len(actorID) > maxActorIDLength {
-		writeError(w, http.StatusBadRequest, "INVALID_ACTOR_ID", "valid X-Actor-ID header is required")
+	actorID, ok := requireActorID(w, r)
+	if !ok {
 		return
 	}
 
@@ -293,12 +295,12 @@ func parseChangeRequestFieldValue(value createChangeRequestValue) (domainasset.F
 }
 
 func requireActorID(w http.ResponseWriter, r *http.Request) (string, bool) {
-	actorID := strings.TrimSpace(r.Header.Get("X-Actor-ID"))
-	if actorID == "" || len(actorID) > maxActorIDLength {
-		writeError(w, http.StatusBadRequest, "INVALID_ACTOR_ID", "valid X-Actor-ID header is required")
+	subject, ok := principalFromContext(r.Context())
+	if !ok || strings.TrimSpace(subject.ID) == "" || len(subject.ID) > maxActorIDLength {
+		writeError(w, http.StatusUnauthorized, "UNAUTHENTICATED", "a valid authenticated principal is required")
 		return "", false
 	}
-	return actorID, true
+	return subject.ID, true
 }
 
 func parseChangeRequestPathID(w http.ResponseWriter, r *http.Request) (domainchange.ID, bool) {

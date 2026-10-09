@@ -7,6 +7,7 @@ vars:
   DEV_DATABASE_URL: '{{.DATABASE_URL | default "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis?sslmode=disable"}}'
   TEST_DATABASE_URL: '{{.E5_ATLASIS_TEST_DATABASE_URL | default "postgres://e5_atlasis:e5_atlasis_dev@127.0.0.1:54329/e5_atlasis_test?sslmode=disable"}}'
   HTTP_ADDR: '{{.HTTP_ADDR | default "127.0.0.1:8080"}}'
+  DEV_AUTH_MODE: '{{.ATLASIS_AUTH_MODE | default "development-header"}}'
   POSTGRES_SERVICE: postgres
   DEV_DB_NAME: e5_atlasis
   DEV_DB_USER: e5_atlasis
@@ -186,6 +187,7 @@ tasks:
     env:
       DATABASE_URL: '{{.DEV_DATABASE_URL}}'
       HTTP_ADDR: '{{.HTTP_ADDR}}'
+      ATLASIS_AUTH_MODE: '{{.DEV_AUTH_MODE}}'
     cmds:
       - go run ./cmd/atlas-api
 

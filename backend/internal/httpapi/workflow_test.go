@@ -95,7 +95,7 @@ func TestChangeRequestCommandRejectsMissingActor(t *testing.T) {
 
 	newTestHandler().Routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401; body = %s", rec.Code, rec.Body.String())
 	}
 }
