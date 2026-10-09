@@ -18,10 +18,14 @@ PostgreSQL, HTTP, authentication, external systems and other adapters.
 
 ## Main domains
 
-- Information Assets
+- Information Systems
+- Objects of Informatization
+- Technical Assets (where individually managed)
 - Change Requests
 - Discussions
 - Approvals
+
+See [Data Model v1](data-model-v1.md) for the proposed relational model and unresolved design decisions.
 
 ## Key principle
 
