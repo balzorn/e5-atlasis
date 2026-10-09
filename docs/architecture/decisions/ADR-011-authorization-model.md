@@ -236,6 +236,48 @@ implementation with Cedar should not require changes to domain invariants or wor
 This table describes role intent, not an unconditional grant list. Concrete grants must be expressed
 as explicit policy and scoped role assignments.
 
+### 14. Stable technical IDs and scoped display numbers
+
+Every persisted entity uses a stable technical identifier, proposed as UUIDv7, for database
+relationships, API resource identity and machine-to-machine references. UUIDv7 is not a secret and
+does not replace authentication or authorization. Its time-ordered layout is an implementation
+benefit, not a guarantee of strict global ordering or uniqueness without database constraints.
+
+Human-readable numbers are a separate presentation/reference attribute. They use a type prefix and
+an incrementing sequence whose scope is explicitly defined per entity type. No tenant's activity may
+advance another tenant's counter, and creating one kind of child entity must not advance a counter
+for another kind or parent.
+
+Initial numbering rules:
+
+- Organization numbers are allocated within a tenant.
+- Information Asset (IA) numbers are allocated within their owning organization. IA numbers may
+  therefore repeat in different organizations.
+- Change Request (CR) numbers are allocated within the specific Information Asset they concern.
+  Each Information Asset starts its own CR sequence.
+- Approval, thread and comment numbers are allocated within their defined parent: approvals within a
+  Change Request; threads within the resource they discuss; comments within their thread (or directly
+  within the parent resource if the model has no thread).
+- Other child entities must define their parent and counter scope explicitly before implementation;
+  they must not silently use a global sequence.
+
+Because a short local number is not necessarily unique by itself, user-facing references and copied
+links must include enough parent context to resolve unambiguously, for example
+`ORG00007-IA00001-CR00001` or `ORG00007-IA00001-CR00001-THR00001-CMT00001`. The exact separator
+and display format may be finalized in the UI/API design, but the scope semantics above are fixed by
+this decision. Internally, relationships always use technical IDs, never display numbers.
+
+Counter allocation must be concurrency-safe and transactional. Implementations must not derive the
+next number using `COUNT(*) + 1` or an unlocked read-modify-write. Use a database-backed counter
+keyed by tenant, entity type and parent scope (as applicable), protected by atomic update/locking,
+and enforce a uniqueness constraint on the resulting scope plus display number. Gaps after failed
+transactions or deleted records are acceptable; reusing an issued number is not. Tests must cover
+parallel creation, rollback behavior, same-parent sequencing and isolation between tenants and
+parents.
+
+This is an architectural proposal for identifier semantics, not a migration or code change. Existing
+records, if any, require an explicit backfill and compatibility plan before implementation.
+
 ## Testing requirements
 
 Authorization is a required application-level test dimension. At minimum, tests must cover:
