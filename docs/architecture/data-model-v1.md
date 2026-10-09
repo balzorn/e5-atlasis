@@ -143,7 +143,7 @@ OII-specific attributes should be modeled as explicit columns or related tables 
 - structural and logical diagram/document references, with version, owner, approval/review date and freshness status;
 - status of key cybersecurity controls (access control, privileged access, patching, time synchronization, perimeter protection/IDS/IPS where applicable, event collection/retention and malware protection), with last verification date, responsible party, exceptions and evidence reference;
 - cybersecurity-center service/contract applicability, provider/center reference, effective dates, responsible contacts, object-specific regulation and response-plan references where that service model applies;
-- any formal regulatory designation, including CII status, only as a separately evidenced designation with decision/source metadata. Do not infer CII status from internal criticality or from the fact that a record is an OII.
+- any formal regulatory designation, such as a possible CII designation, only after the legal relationship to the OII record has been established. Store the decision/source metadata and evidence separately. Until that legal mapping is confirmed, do not assume that a CII designation has a direct foreign-key relationship to an OII, and never infer CII status from internal criticality or merely from the fact that a record is an OII.
 
 These are candidate attribute groups, not a statement that every field is universally mandatory or must be stored directly in AtlasIS. The matrix determines applicability and whether AtlasIS stores the fact, evidence metadata or a protected external reference. Do not copy any of these facts from a member IS as authoritative facts.
 
