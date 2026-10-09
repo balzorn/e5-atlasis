@@ -19,8 +19,9 @@ authorization scope. A tenant contains a catalogue of organizations and explicit
 between them. Organizations remain independent entities; a relationship such as “managed by” or
 “member of group” does not itself grant access.
 
-The system is expected to introduce OIDC for authentication and Cedar for policy evaluation later.
-The authorization model must allow those implementations without coupling the domain layer to an
+Keycloak is the selected OIDC provider for v1, and verified OIDC claims are the initial boundary
+through which AtlasIS receives user identity/profile attributes from the corporate Active Directory
+environment. Cedar may be introduced for policy evaluation without coupling the domain layer to an
 identity provider or policy engine. The deployment may start with one shared application and
 PostgreSQL database, while preserving a path to separate deployments for different tenants.
 
@@ -32,6 +33,36 @@ Authentication establishes the actor identity (subject). Authorization answers w
 may perform a specific action on a resource in a specific tenant and scope.
 
 The domain layer does not depend on OIDC, LDAP, Cedar, HTTP headers or other identity infrastructure.
+Keycloak/OIDC is an infrastructure adapter; verified identity claims are mapped to an internal AtlasIS
+subject before application use cases run.
+
+### 1a. Internal subject and external identity mapping
+
+AtlasIS assigns each person/subject an immutable internal UUID. External identity is represented
+separately from that internal key.
+
+For v1:
+- Keycloak is the OIDC provider. AtlasIS reads profile attributes only from verified claims.
+- Corporate Active Directory is the initial authoritative directory for user identity attributes.
+  A future corporate identity service with its own API may replace or supplement this source.
+- Map the validated OIDC issuer/subject pair (iss, sub) to the internal subject. Retain sAMAccountName
+  and other AD/Keycloak attributes as namespaced external attributes or lookup keys, not as the
+  internal primary key.
+- Do not assume sAMAccountName, email, UPN, domain name or display name is globally unique or immutable.
+  Store the identity source/namespace and define uniqueness within that namespace. A change in email,
+  domain or organization must not create a new internal subject if the same external identity remains.
+- The first OIDC login may provision a minimal subject record only under an explicit account-linking
+  and tenant-assignment policy. Successful authentication does not itself grant access to registry data.
+- AtlasIS owns role assignments, authorization scopes, membership decisions and their audit history.
+  Administrators or delegated access administrators must be able to assign roles to a previously
+  authenticated subject after first login. Claims may supply profile attributes but must not be treated
+  as an unreviewed source of business permissions.
+- Moving a person between organizations requires an explicit update/review of AtlasIS organization
+  membership and scoped role assignments. Future identity-source migration must support a controlled,
+  audited link from a new external identity to an existing internal subject.
+
+This mapping keeps authorization stable when mutable directory attributes change and avoids coupling
+the data model to one directory implementation.
 
 ### 2. Tenant is the data-isolation boundary
 
@@ -143,8 +174,8 @@ Permissions are explicit actions rather than endpoint names. The initial action 
 
 | Resource | Actions |
 |---|---|
-| information_asset | read, create, update, archive |
 | information_system | read, create, update, archive, read_participants, manage_participants |
+| informatization_object | read, create, update, archive, manage_composition |
 | change_request | read, create, update_draft, submit, review, request_changes, reject, approve, apply |
 | approval | read, create, approve, reject |
 | access_assignment | read, grant, revoke, change_scope |
@@ -251,10 +282,11 @@ for another kind or parent.
 Initial numbering rules:
 
 - Organization numbers are allocated within a tenant.
-- Information Asset (IA) numbers are allocated within their owning organization. IA numbers may
-  therefore repeat in different organizations.
-- Change Request (CR) numbers are allocated within the specific Information Asset they concern.
-  Each Information Asset starts its own CR sequence.
+- Information System (IS) and Object of Informatization (OII) numbers use separate prefixes and
+  counters scoped to the tenant. They do not change when the owning organization changes.
+- Change Request (CR) numbers are allocated within the single target resource (one IS or one OII).
+  Each target resource starts its own CR sequence. An OII composition change targets the OII.
+- Individually managed non-IS technical assets and their TA numbering are deferred from v1.
 - Approval, thread and comment numbers are allocated within their defined parent: approvals within a
   Change Request; threads within the resource they discuss; comments within their thread (or directly
   within the parent resource if the model has no thread).
@@ -263,9 +295,10 @@ Initial numbering rules:
 
 Because a short local number is not necessarily unique by itself, user-facing references and copied
 links must include enough parent context to resolve unambiguously, for example
-`ORG00007-IA00001-CR00001` or `ORG00007-IA00001-CR00001-THR00001-CMT00001`. The exact separator
+`IS00001-CR00001` or `OII00001-CR00001-THR00001-CMT00001`. The exact separator
 and display format may be finalized in the UI/API design, but the scope semantics above are fixed by
-this decision. Internally, relationships always use technical IDs, never display numbers.
+this decision. Legacy IA identifiers must be mapped and retained as references during migration; they
+are not the target numbering scheme for newly created IS/OII records. Internally, relationships always use technical IDs, never display numbers.
 
 Counter allocation must be concurrency-safe and transactional. Implementations must not derive the
 next number using `COUNT(*) + 1` or an unlocked read-modify-write. Use a database-backed counter
