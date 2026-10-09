@@ -38,11 +38,10 @@ erDiagram
     ORGANIZATIONS ||--o{ DEPARTMENTS : contains
     ORGANIZATIONS ||--o{ INFORMATION_SYSTEMS : owns
     ORGANIZATIONS ||--o{ INFORMATIZATION_OBJECTS : owns
-    ORGANIZATIONS ||--o{ TECHNICAL_ASSETS : owns
     INFORMATIZATION_OBJECTS ||--o{ OII_IS_MEMBERS : composition
     INFORMATION_SYSTEMS ||--o{ OII_IS_MEMBERS : included
-    INFORMATIZATION_OBJECTS ||--o{ OII_ASSET_MEMBERS : composition
-    TECHNICAL_ASSETS ||--o{ OII_ASSET_MEMBERS : included
+    SUBJECTS ||--o{ EXTERNAL_IDENTITIES : linked
+    SUBJECTS ||--o{ ROLE_ASSIGNMENTS : receives
     INFORMATION_SYSTEMS ||--o{ IS_VERSIONS : versions
     INFORMATIZATION_OBJECTS ||--o{ OII_VERSIONS : versions
     OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
@@ -135,21 +134,45 @@ OII-specific attributes (e.g. regulatory classifications, protection-system stat
 
 The OII owner may be different from every member IS owner. Ownership is not derived from the OII composition.
 
-### 4.6 Technical/information asset that is not an IS
+### 4.6 Individually managed non-IS assets (deferred)
 
-An OII may contain assets that are not themselves an information system. If those items must be individually inventoried, identified, owned, versioned or referenced, create a separate `technical_assets` entity rather than inventing an IS record or storing a name-only JSON entry.
+Individually managed non-IS technical/information assets are out of scope for v1. The v1 OII composition
+model links OIIs to ISs only. Do not add a technical-assets catalogue, TA numbering or OII-to-technical-
+asset links in the initial implementation. If the business later requires these records, reopen the
+scope through a separate design decision and add typed tables with real foreign keys rather than a
+polymorphic member_type/member_id relationship.
 
-Suggested fields:
-- `id UUID PRIMARY KEY`;
-- `tenant_id UUID NOT NULL`;
-- `display_number`;
-- `name`, `description`, `asset_type`;
-- `organization_owner_id UUID NOT NULL`;
-- optional `department_owner_id UUID NULL`;
-- `lifecycle_status`;
-- timestamps.
+### 4.7 Subject and external identity
 
-Keep this entity intentionally small in v1. Only add technical asset classes and specialized tables when the registry's agreed scope requires them. If non-IS items are not individually managed in the initial release, the detailed technical-asset catalogue can be deferred, but the decision must be explicit; do not use a polymorphic FK as a shortcut.
+AtlasIS needs an internal subject record separate from identity-provider and directory attributes.
+
+Suggested conceptual entities:
+- subjects: internal UUID primary key, lifecycle/status, created/updated timestamps;
+- external_identities: internal UUID, subject_id FK, issuer/source namespace, external subject identifier,
+  optional directory identifier such as sAMAccountName, linked_at, link_status and audit metadata;
+- subject_tenant_memberships: subject_id, tenant_id, status, validity period and audit metadata;
+- subject_organization_memberships: subject_id, tenant_id, organization_id, status, validity period
+  and audit metadata, if organization membership is needed for authorization;
+- role_assignments: subject_id, tenant_id, role, scope type/id, granted_by, justification, status,
+  validity window and audit metadata.
+
+These are conceptual names, not a finalized DDL schema. Use UUIDs and real foreign keys; enforce tenant
+consistency on memberships and assignments. The external identity key should normally be the validated
+OIDC issuer/subject pair (iss, sub). Store sAMAccountName as a namespaced attribute/lookup key, not as
+the immutable internal subject ID. Do not assume sAMAccountName, email, UPN, domain or display name is
+globally unique or immutable.
+
+For v1, Keycloak provides verified OIDC claims and corporate Active Directory is the initial authoritative
+directory for user profile attributes. AtlasIS must allow an administrator or delegated access
+administrator to assign roles to a subject after the subject has authenticated at least once. Successful
+OIDC authentication does not automatically grant business permissions. Changes to email, domain,
+display name or organization must not silently create a new subject or grant/revoke roles. If a person
+moves between organizations while the external identity remains the same, retain the internal subject
+and explicitly review organization memberships and scoped role assignments.
+
+The mapping must support a future corporate identity service/API and controlled, audited linking of a
+new external identity to an existing internal subject. The exact stable AD claim and account-linking
+procedure must be finalized before implementing the identity adapter.
 
 ## 5. OII composition
 
@@ -158,11 +181,11 @@ Use explicit link tables with real foreign keys:
 - `oii_information_systems(tenant_id, oii_id, information_system_id, ...)`;
 - `oii_technical_assets(tenant_id, oii_id, technical_asset_id, ...)`.
 
-The first link table connects OIIs to ISs; the second connects OIIs to non-IS technical assets. Both endpoint records must belong to the same tenant. The same IS may be linked to multiple OIIs unless a separately approved domain rule restricts it.
+The link table connects OIIs to ISs; both endpoint records must belong to the same tenant. The same IS may be linked to multiple OIIs.
 
 Constraints and behavior:
-- unique active membership for a given OII/member pair;
-- reject direct self-membership if OII nesting is ever introduced;
+- unique active membership for a given OII/IS pair;
+- nested OIIs are not supported in v1, so no OII-to-OII membership path exists;
 - do not automatically inherit ownership, access assignments, contacts, classifications or statuses across the link;
 - add/remove membership through the controlled Change Request workflow where the change is regulated or otherwise material;
 - preserve membership history and identify the actor/change request that changed the composition.
@@ -240,18 +263,17 @@ Use JSONB only for genuinely flexible, non-core metadata. Do not use JSONB or ar
 
 Technical identifiers are UUIDv7 and are used for all database relationships and API resource identity.
 
-The earlier generic `IA00001` display-number rule assumed that IS and OII were one domain entity. With separate IS and OII entities, that rule needs to be revisited before implementation. Proposed initial scheme:
+The earlier generic `IA00001` display-number rule assumed that IS and OII were one domain entity. For v1 it is superseded by separate IS and OII number namespaces. Agreed initial scheme:
 - `ORG00001`: organization, counter scoped to tenant;
 - `DEPT00001`: department, counter scoped to organization;
 - `IS00001`: information system, counter scoped to tenant;
 - `OII00001`: object of informatization, counter scoped to tenant;
-- `TA00001`: individually managed non-IS technical asset, counter scoped to tenant;
 - `CR00001`: Change Request, counter scoped to target resource;
 - `APR00001`: approval, counter scoped to Change Request;
 - `THR00001`: discussion thread, counter scoped to parent resource;
 - `CMT00001`: comment, counter scoped to thread.
 
-These prefixes and scopes are a proposal, not yet a ratified change to ADR-011. Tenant-local, type-specific counters avoid collisions between distinct domain types and do not change when an owner organization changes. If the business requires numbering within an organization instead, preserve the original numbering scope explicitly (e.g. immutable numbering organization) rather than allowing a display number's namespace to change when ownership changes.
+These prefixes and scopes are the agreed target for v1. Tenant-local, type-specific counters avoid collisions between distinct domain types and do not change when an owner organization changes. The legacy `IA` identifier remains a migration/reference value for existing records until a separately reviewed migration defines its conversion; it is not the target numbering scheme for newly created IS or OII records.
 
 Counter allocation must be atomic and database-backed. Never use `COUNT(*) + 1` or an unlocked read-modify-write. Add uniqueness constraints for each declared scope and allow gaps after rollback; never reuse issued numbers. User-facing short numbers may be ambiguous without parent context; machine references always use UUIDs.
 
@@ -284,18 +306,25 @@ Final indexes depend on real query patterns, but the initial design should inclu
 
 Do not add indexes to every field by default. Validate high-volume queries with `EXPLAIN (ANALYZE, BUFFERS)` against representative data before tuning.
 
-## 12. Decisions required before DDL
+## 12. Decisions resolved for v1 and remaining before DDL
 
-The following points require explicit resolution:
-1. Whether non-IS assets are individually registered in v1; if yes, define the minimum `technical_assets` taxonomy and fields.
-2. Whether one IS may be included in multiple OIIs.
-3. Whether nested OIIs are permitted. If not, do not model them in v1; if later allowed, define cycle detection and authorization semantics.
-4. Which OII/IS fields are versioned and which are operational metadata.
-5. Whether ownership and department changes require approval and whether historic values are kept in versions.
-6. Final display-number prefixes/scopes, including whether to replace the earlier `IA` numbering rule.
-7. Exact Change Request target schema and discussion-parent schema that preserve foreign-key integrity.
-8. Required audit fields and whether external delivery needs a transactional outbox.
-9. The regulatory source and exact rules for each OII classification, attestation or protection attribute. The database model must not invent legal equivalence.
+The following product-level decisions are resolved for the v1 target model:
+
+1. Individually managed non-IS technical assets are deferred. OII composition in v1 links OIIs to ISs only.
+2. An IS may belong to multiple OIIs.
+3. Nested OIIs are not supported in v1.
+4. Each Change Request targets exactly one IS or one OII. A composition change targets the OII. Multi-resource atomic Change Requests are deferred; if a business operation eventually needs coordinated changes to both an IS and an OII, use separate Change Requests or design a higher-level coordinated workflow in a later decision.
+5. Effective IS and OII business/regulatory state is versioned. OII version snapshots include the composition effective for that version. Operational metadata that does not define approved business/regulatory state may remain outside immutable versions, but its audit/lifecycle requirements must be explicit.
+6. Display numbers use separate prefixes and counters scoped to tenant and entity type for IS and OII. CR numbers are scoped to their single target resource; approval numbers to the CR; discussion numbers to their declared parent.
+7. Keycloak is the v1 OIDC provider. The initial directory source is corporate Active Directory; identity attributes are received from verified OIDC claims. AtlasIS keeps internal subject IDs, external identity mappings, role assignments and their history. A future corporate identity API must be supportable without changing internal subject identity or authorization semantics.
+
+The following details remain for detailed design and do not block this conceptual model:
+- the field-by-field classification of IS/OII attributes as versioned business/regulatory state versus operational metadata, including validation against OAC Orders No. 66 and No. 130;
+- the precise stable AD identity attribute/claim mapping and account-linking procedure, including how Keycloak's issuer/subject pair is related to the AD account and how future identity-source changes are audited;
+- the exact version-retention and audit-evidence requirements for OII membership removal;
+- exact Change Request and discussion parent table layouts, indexes and constraint names.
+
+No code or migration should be prepared until these details are reflected in the implementation design and reviewed.
 
 ## 13. Implementation reconciliation checklist
 
@@ -323,6 +352,7 @@ This section records a first-pass review of the current Go domain and SQL migrat
 - A Change Request has one `asset_id` and one `base_version`; its controlled field changes are stored separately. Applying a Change Request creates the next immutable asset version and advances `current_version` inside a transaction. The applier locks the asset row and checks the expected base version.
 - Approval records have a real FK to a Change Request. Approval state/timestamp consistency is constrained in PostgreSQL. Change Request and approval display numbers currently use global sequences.
 - The schema uses TEXT identifiers as primary/foreign keys rather than UUID technical keys. The shown migrations do not define tenant, organization or department catalogue tables, and `organization_id`, `owner_id`, initiator and approver references are not protected by FKs to such catalogues in these migrations.
+- The inspected migrations do not define an internal subject catalogue, OIDC external-identity mapping, tenant-aware role assignments or user profile synchronization. These are target-model requirements, not existing capabilities.
 - The shown schema does not define OII-to-IS composition tables or an individually managed non-IS asset catalogue. The domain has discussion types, but no discussion persistence table appears in migrations 0001–0005.
 - `change_request_changes.old_value` and `new_value` are JSONB objects. This is acceptable for typed before/after field values if the application validates their shape; it should not be extended to store ownership, composition or other relationships as JSON.
 - `ON DELETE CASCADE` is used for Change Request child changes and approvals. This is convenient for disposable test data but should be reviewed against the requirement to preserve audit and workflow history; business Change Requests should normally be cancelled/archived rather than physically deleted.
@@ -363,9 +393,7 @@ The exact sequence depends on whether the environment contains data that must be
 
 ### 14.4 Decisions to settle before implementation
 
-1. Is an IS allowed to belong to more than one OII? The current schema has no answer; the target model should not treat this as settled until the business/regulatory rule is confirmed.
-2. Are non-IS components individually registered in v1, or are they deferred?
-3. Is the display-number scope global per tenant and entity type, or local to an owning organization/parent? The proposal in section 9 must be reconciled with the earlier IA scheme and the user's desired operational references.
-4. Should a Change Request be allowed to contain changes to exactly one IS/OII, or can a single request atomically change multiple related entities? The current implementation is single-asset.
-5. Which OII composition facts must be part of immutable regulatory versions, and what evidence/history must remain after membership removal?
-6. What are the authoritative directory sources and stable IDs for organizations, departments and people?
+1. Which exact IS/OII fields are immutable business/regulatory version state versus operational metadata, after checking OAC Orders No. 66 and No. 130?
+2. Which verified Keycloak claims and AD attributes will map an external identity to an internal AtlasIS subject, and what controlled procedure will support identity-source changes?
+3. What retention period and audit evidence are required for removed OII members?
+4. What exact FK/table layouts will be used for Change Request targets, discussions and identity mappings?
