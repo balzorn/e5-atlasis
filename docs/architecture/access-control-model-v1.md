@@ -268,6 +268,19 @@ operation, old and new effective assignment where applicable, justification, tim
 The assignment mutation and required audit record must be committed atomically or through a
 durable transactional mechanism.
 
+### 7.1 Delegated management of OII composition
+
+An OII Owner may propose additions to or removals from that OII's IS composition only when
+manage_composition is explicitly granted for that OII. The operation must not transfer ownership,
+change an IS's attributes or grant access to the IS or OII merely because the membership link changes.
+The owner cannot add a resource from another tenant, and any required Change Request approval,
+separation-of-duties or security review remains mandatory.
+
+A composition change must be recorded against the target OII's Change Request and resulting immutable
+OII version. The audit trail must identify the actor, OII, affected IS, operation, Change Request,
+resulting version, time and outcome. The effective composition is always derived from the current OII
+version; a draft must not modify the effective membership.
+
 ## 8. Action catalogue
 
 Initial action vocabulary:
