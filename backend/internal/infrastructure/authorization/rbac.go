@@ -137,7 +137,7 @@ func actionMatchesResource(action authz.Action, resourceType authz.ResourceType)
 
 func subjectBelongsToOrganization(subject authz.Subject, organizationID string) bool {
 	for _, candidate := range subject.OrganizationIDs {
-		if strings.TrimSpace(candidate) == organizationID {
+		if strings.TrimSpace(candidate) == strings.TrimSpace(organizationID) {
 			return true
 		}
 	}
