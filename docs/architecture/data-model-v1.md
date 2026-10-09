@@ -39,8 +39,9 @@ erDiagram
     ORGANIZATIONS ||--o{ DEPARTMENTS : contains
     ORGANIZATIONS ||--o{ INFORMATION_SYSTEMS : owns
     ORGANIZATIONS ||--o{ INFORMATIZATION_OBJECTS : owns
-    INFORMATIZATION_OBJECTS ||--o{ OII_IS_MEMBERS : composition
-    INFORMATION_SYSTEMS ||--o{ OII_IS_MEMBERS : included
+    INFORMATIZATION_OBJECTS ||--o{ OII_VERSIONS : versions
+    OII_VERSIONS ||--o{ OII_VERSION_IS_MEMBERS : snapshot
+    INFORMATION_SYSTEMS ||--o{ OII_VERSION_IS_MEMBERS : included
     SUBJECTS ||--o{ EXTERNAL_IDENTITIES : linked
     SUBJECTS ||--o{ ROLE_ASSIGNMENTS : receives
     INFORMATION_SYSTEMS ||--o{ IS_VERSIONS : versions
@@ -178,20 +179,16 @@ procedure must be finalized before implementing the identity adapter.
 
 ## 5. OII composition
 
-Use explicit link tables with real foreign keys:
-
-- `oii_information_systems(tenant_id, oii_id, information_system_id, ...)`;
-
-The link table connects OIIs to ISs; both endpoint records must belong to the same tenant. The same IS may be linked to multiple OIIs.
+The authoritative membership relation for v1 is `oii_version_information_systems(tenant_id, oii_version_id, information_system_id, ...)`, with real foreign keys to the OII version and IS. Each row records membership in a specific immutable OII version; the same IS may appear in multiple OII versions and in more than one OII.
 
 Constraints and behavior:
-- unique active membership for a given OII/IS pair;
+- enforce unique membership for a given OII version/IS pair;
 - nested OIIs are not supported in v1, so no OII-to-OII membership path exists;
 - do not automatically inherit ownership, access assignments, contacts, classifications or statuses across the link;
 - add/remove membership through the controlled Change Request workflow where the change is regulated or otherwise material;
-- preserve membership history and identify the actor/change request that changed the composition.
+- preserve membership history through immutable OII versions and identify the actor/Change Request that changed the composition.
 
-Avoid storing an array of IS UUIDs or asset UUIDs on the OII row. Avoid a single `member_type + member_id` polymorphic table for the v1 relational model because PostgreSQL cannot enforce a conventional foreign key to multiple target tables.
+The effective current composition is the membership of the current OII version. Do not maintain a separately editable membership list that can drift from the approved version. If query performance later requires a current-membership projection, derive and update it transactionally from the versioned source of truth. Avoid storing an array of IS UUIDs on the OII row and avoid polymorphic member_type/member_id references.
 
 ### Composition versioning
 
@@ -298,7 +295,7 @@ Final indexes depend on real query patterns, but the initial design should inclu
 - primary keys on all entities;
 - tenant-scoped unique constraints for display numbers;
 - indexes for `(tenant_id, lifecycle_status)` and common owner/list filters where query evidence supports them;
-- indexes on each composition link's OII and member FK, plus uniqueness of the pair;
+- indexes on OII-version membership rows by version and IS, plus uniqueness of the version/IS pair;
 - indexes on `change_requests(tenant_id, status, created_at)` and target references;
 - indexes on version tables by parent and version number;
 - indexes on approval records by Change Request and assigned approver;
