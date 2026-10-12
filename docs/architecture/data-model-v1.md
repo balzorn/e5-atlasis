@@ -3,7 +3,7 @@
 - Status: Proposed
 - Version: 1.0-draft
 - Date: 2026-10-09
-- Related documents: ADR-011; Access Control Model v1
+- Related documents: ADR-011; Access Control Model v1; Normative Attribute Matrix v1; [Attribute Catalog v1](attribute-catalog-v1.md)
 - Scope: conceptual relational model for review; not a migration or implementation specification
 
 ## 1. Purpose
