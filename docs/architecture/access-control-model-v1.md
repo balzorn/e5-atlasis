@@ -58,7 +58,7 @@ behavior must be documented and tested.
 
 ### 2.3 Registry object
 
-A registry object is an information system, object of informatization, Change Request, approval,
+A registry object is an information system, object of information infrastructure, Change Request, approval,
 access assignment, audit event or another managed record.
 
 Every tenant-owned object must be attributable to one tenant. Objects that are organization-owned
@@ -122,7 +122,7 @@ The human-readable number is unique only within its declared numbering scope. In
 | Organization | `ORG` | Within one tenant | `ORG00007` |
 | Department | `DEPT` | Within its organization | `DEPT00001` |
 | Information System | `IS` | Within one tenant | `IS00001` |
-| Object of Informatization | `OII` | Within one tenant | `OII00001` |
+| Object of Information Infrastructure | `OII` | Within one tenant | `OII00001` |
 | Change Request | `CR` | Within its target resource | `CR00001` |
 | Approval | `APR` | Within its Change Request | `APR00001` |
 | Thread | `THR` | Within the resource being discussed | `THR00001` |
@@ -186,7 +186,7 @@ The proposed scope types are:
 | tenant | Entire tenant | Only explicitly allowed tenant-wide functions |
 | organization | One organization in a tenant | Only resources and actions explicitly granted for that organization |
 | information_system | One information system | Only that system and explicitly supported related actions |
-| informatization_object | One object of informatization | Only that object and explicitly supported related actions |
+| information_infrastructure_object | One object of information infrastructure | Only that object and explicitly supported related actions |
 | change_request | One Change Request | Only that workflow object and explicitly supported actions |
 | approval | One approval record | Only that approval and explicitly supported actions |
 
@@ -288,7 +288,7 @@ Initial action vocabulary:
 | Resource | Actions |
 |---|---|
 | information_system | read, create, update, archive, read_participants, manage_participants |
-| informatization_object | read, create, update, archive, manage_composition |
+| information_infrastructure_object | read, create, update, archive, manage_composition |
 | change_request | read, create, update_draft, submit, review, request_changes, reject, approve, apply |
 | approval | read, create, approve, reject |
 | access_assignment | read, grant, revoke, change_scope |
